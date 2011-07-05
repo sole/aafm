@@ -6,19 +6,32 @@
     <property name="visible">True</property>
     <property name="ubuntu_local">True</property>
     <child>
-      <object class="GtkMenuItem" id="menuDeviceDeleteItem">
-        <property name="visible">True</property>
-        <property name="label" translatable="yes">Delete</property>
-        <property name="use_underline">True</property>
-        <signal name="activate" handler="on_menuDeviceDeleteItem_activate"/>
-      </object>
-    </child>
-    <child>
       <object class="GtkMenuItem" id="menuDeviceCreateDirectory">
         <property name="visible">True</property>
         <property name="label" translatable="yes">Create directory</property>
         <property name="use_underline">True</property>
         <signal name="activate" handler="on_menuDeviceCreateDirectory_activate"/>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="menuDeviceRefresh">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Refresh</property>
+        <property name="use_underline">True</property>
+        <signal name="activate" handler="on_menuDeviceRefresh_activate"/>
+      </object>
+    </child>
+    <child>
+      <object class="GtkSeparatorMenuItem" id="sep1">
+        <property name="visible">True</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="menuDeviceDeleteItem">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Delete</property>
+        <property name="use_underline">True</property>
+        <signal name="activate" handler="on_menuDeviceDeleteItem_activate"/>
       </object>
     </child>
   </object>

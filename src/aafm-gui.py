@@ -164,7 +164,8 @@ class Aafm_GUI:
 			menu = builder.get_object("menu")
 			builder.connect_signals({
 				'on_menuDeviceDeleteItem_activate': self.on_device_delete_item_callback,
-				'on_menuDeviceCreateDirectory_activate': self.on_device_create_directory_callback
+				'on_menuDeviceCreateDirectory_activate': self.on_device_create_directory_callback,
+				'on_menuDeviceRefresh_activate': self.on_device_refresh_callback
 			})
 
 			# Ensure only right options are available
@@ -251,6 +252,10 @@ class Aafm_GUI:
 
 	def dialog_response(self, entry, dialog, response):
 		dialog.response(response)
+
+
+	def on_device_refresh_callback(self, widget):
+		self.refresh_device_files()
 
 
 	def die_callback(self, widget, data=None):
