@@ -84,4 +84,14 @@ class Aafm:
 
 		return entries[filename]['is_directory']
 
+	def device_make_directory(self, directory):
+		pattern = re.compile(r'(\w|_|-)+')
+		base = os.path.basename(directory)
+		if pattern.match(base):
+			self.execute( '%s shell mkdir "%s" ' % (self.adb, directory ) )
+		else:
+			print 'invalid directory name', directory
+
+
+
 
