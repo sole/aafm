@@ -92,6 +92,21 @@ class Aafm_GUI:
 		self.device_treeViewFile.load_data(self.dir_scan_device(self.device_cwd))
 
 
+	def get_device_selected_files(self):
+		values = []
+		
+		model, rows = self.device_treeViewFile.get_tree().get_selection().get_selected_rows()
+
+		for row in rows:
+			iter = model.get_iter(row)
+			filename = model.get_value(iter, 1)
+			is_directory = model.get_value(iter, 0)
+
+			values.append({'filename': filename, 'is_directory': is_directory})
+
+		return values
+
+
 	""" Walks through a directory and return the data in a tree-style list 
 		that can be used by the TreeViewFile """
 	def dir_scan_host(self, directory):
@@ -152,15 +167,52 @@ class Aafm_GUI:
 				'on_menuDeviceCreateDirectory_activate': self.on_device_create_directory_callback
 			})
 
+			# Ensure only right options are available
+			selected = self.get_device_selected_files()
+
+			menuDelete = builder.get_object('menuDeviceDeleteItem')
+			menuDelete.set_sensitive(len(selected) > 0)
+
 			menu.popup(None, None, None, event.button, event.time)
 			return True
 		
-		# don't consume the event
+		# don't consume the event, so we can still double click to navigate
 		return False
 
 	def on_device_delete_item_callback(self, widget):
-		print 'delete', self, widget
+		selected = self.get_device_selected_files()
 
+		items = []
+
+		for item in selected:
+			items.append(item['filename'])
+
+		result = self.dialog_device_delete_confirmation(items)
+
+	def dialog_device_delete_confirmation(self, items):
+		items.sort()
+		joined = ', '.join(items)
+		print joined
+		dialog = gtk.MessageDialog(
+			parent = None,
+			flags = gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+			type = gtk.MESSAGE_QUESTION,
+			buttons = gtk.BUTTONS_OK_CANCEL,
+			message_format = "Are you sure you want to delete %d items?" % len(items)
+		)
+		dialog.format_secondary_markup('%s will be deleted. This action cannot be undone.' % joined)
+		dialog.show_all()
+		result = dialog.run()
+		
+		dialog.destroy()
+		
+		if result == gtk.RESPONSE_OK:
+			for item in items:
+				full_item_path = os.path.join(self.device_cwd, item)
+				self.aafm.device_delete_item(full_item_path)
+				self.refresh_device_files()
+		else:
+			print 'no no'
 
 	def on_device_create_directory_callback(self, widget):
 		directory_name = self.dialog_get_directory_name()

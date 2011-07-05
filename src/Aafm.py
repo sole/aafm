@@ -91,6 +91,23 @@ class Aafm:
 			self.execute( '%s shell mkdir "%s" ' % (self.adb, directory ) )
 		else:
 			print 'invalid directory name', directory
+	
+	
+	def device_delete_item(self, path):
+
+		if self.is_device_file_a_directory(path):
+			entries = self.parse_device_list(self.device_list_files(path))
+
+			for filename, entry in entries.iteritems():
+				entry_full_path = os.path.join(path, filename)
+				self.device_delete_item(entry_full_path)
+
+			# finally delete the directory itself
+			self.execute('%s shell rmdir "%s"' % (self.adb, path))
+
+		else:
+			self.execute('%s shell rm "%s"' % (self.adb, path))
+
 
 
 
