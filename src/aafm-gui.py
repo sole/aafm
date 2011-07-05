@@ -66,6 +66,7 @@ class Aafm_GUI:
 
 		if is_dir:
 			self.host_cwd = os.path.normpath(os.path.join(self.host_cwd, name))
+			self.aafm.set_host_cwd(self.host_cwd)
 			self.refresh_host_files()
 
 
@@ -79,6 +80,7 @@ class Aafm_GUI:
 
 		if is_dir:
 			self.device_cwd = os.path.normpath(os.path.join(self.device_cwd, name))
+			self.aafm.set_device_cwd(self.device_cwd)
 			self.refresh_device_files()
 
 	

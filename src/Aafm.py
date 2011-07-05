@@ -27,6 +27,14 @@ class Aafm:
 		return lines
 
 
+	def set_host_cwd(self, cwd):
+		self.host_cwd = cwd
+	
+
+	def set_device_cwd(self, cwd):
+		self.device_cwd = cwd
+
+
 	def get_device_file_list(self):
 		return self.parse_device_list( self.device_list_files(self.device_cwd) )
 
