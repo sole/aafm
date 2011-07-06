@@ -6,6 +6,7 @@ import gtk
 import gobject
 import os
 import shutil
+import socket
 
 from TreeViewFile import TreeViewFile
 from Aafm import Aafm
@@ -35,12 +36,15 @@ class Aafm_GUI:
 		hostFrame = builder.get_object('frameHost')
 		hostFrame.get_child().add(self.host_treeViewFile.get_view())
 		self.host_treeViewFile.get_tree().connect('button_press_event', self.on_host_tree_view_contextual_menu)
+		self.hostFrame = hostFrame
+		self.hostName = socket.gethostname()
 
 		self.device_treeViewFile = TreeViewFile(imageDir.get_pixbuf(), imageFile.get_pixbuf())
 		self.device_treeViewFile.get_tree().connect('row-activated', self.device_navigate_callback)
 		deviceFrame = builder.get_object('frameDevice')
 		deviceFrame.get_child().add(self.device_treeViewFile.get_view())
 		self.device_treeViewFile.get_tree().connect('button_press_event', self.on_device_tree_view_contextual_menu)
+		self.deviceFrame = deviceFrame
 
 		# Progress bar
 		self.progress_bar = builder.get_object('progressBar')
@@ -53,6 +57,12 @@ class Aafm_GUI:
 
 		self.refresh_host_files()
 		self.refresh_device_files()
+
+		# Make both panels equal in size (at least initially)
+		panelsPaned = builder.get_object('panelsPaned')
+		panelW, panelH = panelsPaned.size_request()
+		halfW = panelW / 2
+		panelsPaned.set_position(halfW)
 
 		# And we're done!
 		self.window.show_all()
@@ -88,10 +98,12 @@ class Aafm_GUI:
 	
 	def refresh_host_files(self):
 		self.host_treeViewFile.load_data(self.dir_scan_host(self.host_cwd))
+		self.hostFrame.set_label('%s:%s' % (self.hostName, self.host_cwd))
 
 
 	def refresh_device_files(self):
 		self.device_treeViewFile.load_data(self.dir_scan_device(self.device_cwd))
+		self.deviceFrame.set_label('%s:%s' % ('device', self.device_cwd))
 
 
 	def get_treeviewfile_selected(self, treeviewfile):

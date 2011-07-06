@@ -13,7 +13,7 @@
       <object class="GtkVBox" id="vbox1">
         <property name="visible">True</property>
         <child>
-          <object class="GtkHPaned" id="hpaned1">
+          <object class="GtkHPaned" id="panelsPaned">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <child>
