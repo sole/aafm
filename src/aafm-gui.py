@@ -169,7 +169,8 @@ class Aafm_GUI:
 			builder.add_from_file(os.path.join(self.basedir, 'data/glade/menu_contextual_host.xml'))
 			menu = builder.get_object('menu')
 			builder.connect_signals({
-				'on_menuHostCopyToDevice_activate': self.on_host_copy_to_device_callback
+				'on_menuHostCopyToDevice_activate': self.on_host_copy_to_device_callback,
+				'on_menuHostCreateDirectory_activate': self.on_host_create_directory_callback
 			})
 
 			# Ensure only right options are available
@@ -216,6 +217,19 @@ class Aafm_GUI:
 			yield True
 
 		yield False
+
+
+	# Create host directory
+	def on_host_create_directory_callback(self, widget):
+		directory_name = self.dialog_get_directory_name()
+
+		if directory_name is None:
+			return
+
+		full_path = os.path.join(self.host_cwd, directory_name)
+		if not os.path.exists(full_path):
+			os.mkdir(full_path)
+			self.refresh_host_files()
 
 
 	def on_device_tree_view_contextual_menu(self, widget, event):
