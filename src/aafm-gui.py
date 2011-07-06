@@ -201,10 +201,12 @@ class Aafm_GUI:
 			filename = row['filename']
 			full_host_path = os.path.join(self.host_cwd, filename)
 
-			if os.path.isfile(full_host_path):
+			"""if os.path.isfile(full_host_path):
 				full_device_path = self.device_cwd
 			else:
-				full_device_path = os.path.join(self.device_cwd, filename)
+				full_device_path = os.path.join(self.device_cwd, filename)"""
+
+			full_device_path = self.device_cwd
 
 			self.aafm.copy_to_device(full_host_path, full_device_path)
 			completed = completed + 1

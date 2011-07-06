@@ -137,7 +137,7 @@ class Aafm:
 		dst_parent_dir = os.path.dirname(fixed_device_dir)
 		# Can't use os.path.basename as it doesn't return the name part of a directory
 		# (it comes out as an empty string!)
-		(dst_path, dst_basename) = os.path.split(fixed_device_dir)
+		dst_path, dst_basename = os.path.split(fixed_device_dir)
 		parent_device_entries = self.parse_device_list(self.device_list_files(dst_parent_dir))
 
 		print "PARENT", dst_parent_dir
