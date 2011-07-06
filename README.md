@@ -26,3 +26,4 @@ The line above appends adb's path to whatever value $PATH held before. The path 
 - Create a settings file (in ~/.file_explorer?), to store...
 	- path to adb
 	- last used directory
+- Empty directories are ignored when copying

@@ -165,14 +165,22 @@ class Aafm_GUI:
 			builder.connect_signals({
 				'on_menuDeviceDeleteItem_activate': self.on_device_delete_item_callback,
 				'on_menuDeviceCreateDirectory_activate': self.on_device_create_directory_callback,
-				'on_menuDeviceRefresh_activate': self.on_device_refresh_callback
+				'on_menuDeviceRefresh_activate': self.on_device_refresh_callback,
+				'on_menuDeviceCopyToComputer_activate': self.on_device_copy_to_computer_callback,
+				'on_menuDeviceRenameItem_activate': self.on_device_rename_item_callback
 			})
 
 			# Ensure only right options are available
-			selected = self.get_device_selected_files()
-
+			num_selected = len(self.get_device_selected_files())
+			has_selection = num_selected > 0
 			menuDelete = builder.get_object('menuDeviceDeleteItem')
-			menuDelete.set_sensitive(len(selected) > 0)
+			menuDelete.set_sensitive(has_selection)
+			
+			menuCopy = builder.get_object('menuDeviceCopyToComputer')
+			menuCopy.set_sensitive(has_selection)
+
+			menuRename = builder.get_object('menuDeviceRenameItem')
+			menuRename.set_sensitive(num_selected == 1)
 
 			menu.popup(None, None, None, event.button, event.time)
 			return True
@@ -257,6 +265,98 @@ class Aafm_GUI:
 	def on_device_refresh_callback(self, widget):
 		self.refresh_device_files()
 
+	def on_device_copy_to_computer_callback(self, widget):
+		print 'copy to computer'
+		selected = self.get_device_selected_files()
+		
+		task = self.copy_from_device_task(selected)
+		gobject.idle_add(task.next)
+
+	def copy_from_device_task(self, rows):
+		completed = 0
+		total = len(rows)
+
+		self.update_progress()
+
+		#while completed < total:
+		for row in rows:
+			#row = rows[completed]
+			#iter = model.get_iter(row)
+			filename = row['filename'] #model.get_value(iter, 1)
+			is_directory = row['is_directory'] #model.get_value(iter, 0)
+
+			full_device_path = os.path.join(self.device_cwd, filename)
+			if is_directory:
+				full_host_path = os.path.join(self.host_cwd, filename)
+			else:
+				full_host_path = self.host_cwd
+			
+			self.aafm.copy_to_host(full_device_path, full_host_path)
+			completed = completed + 1
+			self.refresh_host_files()
+			self.update_progress(completed * 1.0 / total)
+
+			yield True
+
+		yield False
+
+	def on_device_rename_item_callback(self, widget):
+		old_name = self.get_device_selected_files()[0]['filename']
+		new_name = self.dialog_get_item_name(old_name)
+
+		if new_name is None:
+			return
+
+		full_src_path = os.path.join(self.device_cwd, old_name)
+		full_dst_path = os.path.join(self.device_cwd, new_name)
+
+		self.aafm.device_rename_item(full_src_path, full_dst_path)
+		self.refresh_device_files()
+	
+	def dialog_get_item_name(self, old_name):
+		dialog = gtk.MessageDialog(
+			None,
+			gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+			gtk.MESSAGE_QUESTION,
+			gtk.BUTTONS_OK_CANCEL,
+			None)
+
+		dialog.set_markup('Please enter new name:')
+
+		entry = gtk.Entry()
+		entry.connect('activate', self.dialog_response, dialog, gtk.RESPONSE_OK)
+		entry.set_text(old_name)
+
+		hbox = gtk.HBox()
+		hbox.pack_start(gtk.Label('Name:'), False, 5, 5)
+		hbox.pack_end(entry)
+
+		dialog.vbox.pack_end(hbox, True, True, 0)
+		dialog.show_all()
+
+		result = dialog.run()
+		text = entry.get_text()
+		dialog.destroy()
+		
+		if result == gtk.RESPONSE_OK:
+			return text
+		else:
+			return None
+
+
+	def update_progress(self, value = None):
+		if value is None:
+			self.progress_bar.set_fraction(0)
+			self.progress_bar.set_text("")
+			self.progress_bar.pulse()
+		else:
+			self.progress_bar.set_fraction(value)
+
+			self.progress_bar.set_text("%d%%" % (value * 100))
+
+		if value >= 1:
+			self.progress_bar.set_text("Done")
+			self.progress_bar.set_fraction(0)
 
 	def die_callback(self, widget, data=None):
 		self.destroy(widget, data)

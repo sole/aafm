@@ -109,6 +109,37 @@ class Aafm:
 			self.execute('%s shell rm "%s"' % (self.adb, path))
 
 
+	def copy_to_host(self, device_file, host_directory):
+		print "COPY FROM DEVICE: ", device_file, "=>", host_directory
+
+		if os.path.isfile(host_directory):
+			print "ERROR", host_directory, "is a file, not a directory"
+			return
+
+		if self.is_device_file_a_directory(device_file):
+			print device_file, "is a dir"
+
+			# copy recursively!
+			entries = self.parse_device_list(self.device_list_files(device_file))
+
+			for filename, entry in entries.iteritems():
+				if entry['is_directory']:
+					self.copy_to_host(os.path.join(device_file, filename), os.path.join(host_directory, filename))
+				else:
+					self.copy_to_host(os.path.join(device_file, filename), host_directory)
+
+		else:
+			host_file = os.path.join(host_directory, os.path.basename(device_file))
+			self.execute('%s pull "%s" "%s"' % (self.adb, device_file, host_file))
 
 
+	def device_rename_item(self, device_src_path, device_dst_path):
+		items = self.parse_device_list(self.device_list_files(os.path.dirname(device_dst_path)))
+		filename = os.path.basename(device_dst_path)
+		print filename
 
+		if items.has_key(filename):
+			print 'Filename %s already exists' % filename
+			return
+
+		self.execute('%s shell mv "%s" "%s"' % (self.adb, device_src_path, device_dst_path))

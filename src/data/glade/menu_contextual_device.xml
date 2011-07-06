@@ -6,9 +6,22 @@
     <property name="visible">True</property>
     <property name="ubuntu_local">True</property>
     <child>
+      <object class="GtkMenuItem" id="menuDeviceCopyToComputer">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Copy to computer</property>
+        <property name="use_underline">True</property>
+        <signal name="activate" handler="on_menuDeviceCopyToComputer_activate"/>
+      </object>
+    </child>
+    <child>
+      <object class="GtkSeparatorMenuItem" id="sepa">
+        <property name="visible">True</property>
+      </object>
+    </child>
+    <child>
       <object class="GtkMenuItem" id="menuDeviceCreateDirectory">
         <property name="visible">True</property>
-        <property name="label" translatable="yes">Create directory</property>
+        <property name="label" translatable="yes">Create directory...</property>
         <property name="use_underline">True</property>
         <signal name="activate" handler="on_menuDeviceCreateDirectory_activate"/>
       </object>
@@ -32,6 +45,14 @@
         <property name="label" translatable="yes">Delete</property>
         <property name="use_underline">True</property>
         <signal name="activate" handler="on_menuDeviceDeleteItem_activate"/>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="menuDeviceRenameItem">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Rename...</property>
+        <property name="use_underline">True</property>
+        <signal name="activate" handler="on_menuDeviceRenameItem_activate"/>
       </object>
     </child>
   </object>
