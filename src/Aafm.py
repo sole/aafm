@@ -132,6 +132,46 @@ class Aafm:
 			host_file = os.path.join(host_directory, os.path.basename(device_file))
 			self.execute('%s pull "%s" "%s"' % (self.adb, device_file, host_file))
 
+	def copy_to_device(self, host_file, device_directory):
+		fixed_device_dir = os.path.normpath(device_directory)
+		dst_parent_dir = os.path.dirname(fixed_device_dir)
+		# Can't use os.path.basename as it doesn't return the name part of a directory
+		# (it comes out as an empty string!)
+		(dst_path, dst_basename) = os.path.split(fixed_device_dir)
+		parent_device_entries = self.parse_device_list(self.device_list_files(dst_parent_dir))
+
+		print "PARENT", dst_parent_dir
+		print "BASENAME", dst_basename
+		print "CONTAINS", parent_device_entries
+
+		if not parent_device_entries.has_key(dst_basename):
+			self.device_make_directory(device_directory)
+		elif not parent_device_entries[dst_basename]['is_directory']:
+			print "ERROR", device_directory, "is a file, not a directory"
+			return
+
+		if os.path.isfile(host_file):
+			print host_file, "is a file"
+
+			# We only copy if the dst file is older or different in size
+			entries = self.parse_device_list(self.device_list_files(device_directory))
+			f = os.path.basename(host_file)
+			if entries.has_key(f):
+				if entries[f]['timestamp'] >= os.path.getmtime(host_file) and entries[f]['size'] == os.path.getsize(host_file):
+					print "File is newer or the same, skipping"
+					return
+
+			print "Copying", host_file, "=>", device_directory
+
+			self.execute('%s push "%s" "%s"' % (self.adb, host_file, device_directory))
+		else:
+			print host_file, 'is a directory'
+
+			entries = os.listdir(host_file)
+
+			for entry in entries:
+				self.copy_to_device(os.path.join(host_file, entry), os.path.join(device_directory, os.path.basename(host_file)))
+
 
 	def device_rename_item(self, device_src_path, device_dst_path):
 		items = self.parse_device_list(self.device_list_files(os.path.dirname(device_dst_path)))

@@ -33,6 +33,7 @@ class Aafm_GUI:
 		self.host_treeViewFile.get_tree().connect('row-activated', self.host_navigate_callback)
 		hostFrame = builder.get_object('frameHost')
 		hostFrame.get_child().add(self.host_treeViewFile.get_view())
+		self.host_treeViewFile.get_tree().connect('button_press_event', self.on_host_tree_view_contextual_menu)
 
 		self.device_treeViewFile = TreeViewFile(imageDir.get_pixbuf(), imageFile.get_pixbuf())
 		self.device_treeViewFile.get_tree().connect('row-activated', self.device_navigate_callback)
@@ -92,19 +93,24 @@ class Aafm_GUI:
 		self.device_treeViewFile.load_data(self.dir_scan_device(self.device_cwd))
 
 
-	def get_device_selected_files(self):
+	def get_treeviewfile_selected(self, treeviewfile):
 		values = []
-		
-		model, rows = self.device_treeViewFile.get_tree().get_selection().get_selected_rows()
+		model, rows = treeviewfile.get_tree().get_selection().get_selected_rows()
 
 		for row in rows:
 			iter = model.get_iter(row)
 			filename = model.get_value(iter, 1)
 			is_directory = model.get_value(iter, 0)
-
 			values.append({'filename': filename, 'is_directory': is_directory})
 
 		return values
+
+
+	def get_host_selected_files(self):
+		return self.get_treeviewfile_selected(self.host_treeViewFile)
+
+	def get_device_selected_files(self):
+		return self.get_treeviewfile_selected(self.device_treeViewFile)
 
 
 	""" Walks through a directory and return the data in a tree-style list 
@@ -157,8 +163,61 @@ class Aafm_GUI:
 
 		return output
 
+	def on_host_tree_view_contextual_menu(self, widget, event):
+		if event.button == 3: # Right click
+			builder = gtk.Builder()
+			builder.add_from_file(os.path.join(self.basedir, 'data/glade/menu_contextual_host.xml'))
+			menu = builder.get_object('menu')
+			builder.connect_signals({
+				'on_menuHostCopyToDevice_activate': self.on_host_copy_to_device_callback
+			})
+
+			# Ensure only right options are available
+			num_selected = len(self.get_host_selected_files())
+			has_selection = num_selected > 0
+
+			menuCopy = builder.get_object('menuHostCopyToDevice')
+			menuCopy.set_sensitive(has_selection)
+
+			menu.popup(None, None, None, event.button, event.time)
+			return True
+		
+		# Not consuming the event
+		return False
+
+	# Copy to device
+	def on_host_copy_to_device_callback(self, widget):
+		print 'copy to host'
+		selected = self.get_host_selected_files()
+		task = self.copy_to_device_task(selected)
+		gobject.idle_add(task.next)
+
+	def copy_to_device_task(self, rows):
+		completed = 0
+		total = len(rows)
+		self.update_progress()
+
+		for row in rows:
+			filename = row['filename']
+			full_host_path = os.path.join(self.host_cwd, filename)
+
+			if os.path.isfile(full_host_path):
+				full_device_path = self.device_cwd
+			else:
+				full_device_path = os.path.join(self.device_cwd, filename)
+
+			self.aafm.copy_to_device(full_host_path, full_device_path)
+			completed = completed + 1
+			self.refresh_device_files()
+			self.update_progress(completed * 1.0 / total)
+
+			yield True
+
+		yield False
+
+
 	def on_device_tree_view_contextual_menu(self, widget, event):
-		if event.button == 3:
+		if event.button == 3: # Right click
 			builder = gtk.Builder()
 			builder.add_from_file(os.path.join(self.basedir, "data/glade/menu_contextual_device.xml"))
 			menu = builder.get_object("menu")

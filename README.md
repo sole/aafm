@@ -34,3 +34,5 @@ The line above appends adb's path to whatever value $PATH held before. The path 
 - Local panel actions
 - Find out host / device names
 - Finer granularity when reporting the progress of copy operations. Right now it's too coarse!
+- Show permissions/owner/etc columns
+- Right click when there's nothing selected-> maybe it should select the row below (saves one extra click)
