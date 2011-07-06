@@ -226,6 +226,10 @@ class Aafm_GUI:
 	def on_device_create_directory_callback(self, widget):
 		directory_name = self.dialog_get_directory_name()
 
+		# dialog was cancelled
+		if directory_name is None:
+			return
+
 		full_path = os.path.join(self.device_cwd, directory_name)
 		self.aafm.device_make_directory(full_path)
 		self.refresh_device_files()
@@ -236,7 +240,7 @@ class Aafm_GUI:
 			None,
 			gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
 			gtk.MESSAGE_QUESTION,
-			gtk.BUTTONS_OK,
+			gtk.BUTTONS_OK_CANCEL,
 			None)
 
 		dialog.set_markup('Please enter new directory name:')
@@ -251,11 +255,15 @@ class Aafm_GUI:
 		dialog.vbox.pack_end(hbox, True, True, 0)
 		dialog.show_all()
 
-		dialog.run()
+		result = dialog.run()
 
 		text = entry.get_text()
 		dialog.destroy()
-		return text
+
+		if result == gtk.RESPONSE_OK:
+			return text
+		else:
+			return None
 
 
 	def dialog_response(self, entry, dialog, response):
