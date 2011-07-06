@@ -14,7 +14,7 @@
       </object>
     </child>
     <child>
-      <object class="GtkSeparatorMenuItem" id="menuitem1">
+      <object class="GtkSeparatorMenuItem" id="se">
         <property name="visible">True</property>
       </object>
     </child>
@@ -32,6 +32,27 @@
         <property name="label" translatable="yes">Refresh</property>
         <property name="use_underline">True</property>
         <signal name="activate" handler="on_menuHostRefresh_activate"/>
+      </object>
+    </child>
+    <child>
+      <object class="GtkSeparatorMenuItem" id="sep">
+        <property name="visible">True</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="menuHostDeleteItem">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Delete...</property>
+        <property name="use_underline">True</property>
+        <signal name="activate" handler="on_menuHostDeleteItem_activate"/>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="menuHostRenameItem">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Rename...</property>
+        <property name="use_underline">True</property>
+        <signal name="activate" handler="on_menuHostRenameItem_activate"/>
       </object>
     </child>
   </object>

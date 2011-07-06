@@ -5,6 +5,7 @@ pygtk.require('2.0')
 import gtk
 import gobject
 import os
+import shutil
 
 from TreeViewFile import TreeViewFile
 from Aafm import Aafm
@@ -171,7 +172,9 @@ class Aafm_GUI:
 			builder.connect_signals({
 				'on_menuHostCopyToDevice_activate': self.on_host_copy_to_device_callback,
 				'on_menuHostCreateDirectory_activate': self.on_host_create_directory_callback,
-				'on_menuHostRefresh_activate': self.on_host_refresh_callback
+				'on_menuHostRefresh_activate': self.on_host_refresh_callback,
+				'on_menuHostDeleteItem_activate': self.on_host_delete_item_callback,
+				'on_menuHostRenameItem_activate': self.on_host_rename_item_callback
 			})
 
 			# Ensure only right options are available
@@ -180,6 +183,12 @@ class Aafm_GUI:
 
 			menuCopy = builder.get_object('menuHostCopyToDevice')
 			menuCopy.set_sensitive(has_selection)
+
+			menuDelete = builder.get_object('menuHostDeleteItem')
+			menuDelete.set_sensitive(has_selection)
+
+			menuRename = builder.get_object('menuHostRenameItem')
+			menuRename.set_sensitive(num_selected == 1)	
 
 			menu.popup(None, None, None, event.button, event.time)
 			return True
@@ -237,6 +246,29 @@ class Aafm_GUI:
 		self.refresh_host_files()
 
 
+	def on_host_delete_item_callback(self, widget):
+		selected = self.get_host_selected_files()
+		items = []
+		for item in selected:
+			items.append(item['filename'])
+			
+		result = self.dialog_delete_confirmation(items)
+
+		if result == gtk.RESPONSE_OK:
+			for item in items:
+				full_item_path = os.path.join(self.host_cwd, item)
+				self.delete_item(full_item_path)
+				self.refresh_host_files()
+
+	def delete_item(self, path):
+		if os.path.isfile(path):
+			os.remove(path)
+		else:
+			shutil.rmtree(path)
+
+	def on_host_rename_item_callback(self, widget):
+		pass
+
 	def on_device_tree_view_contextual_menu(self, widget, event):
 		if event.button == 3: # Right click
 			builder = gtk.Builder()
@@ -276,9 +308,18 @@ class Aafm_GUI:
 		for item in selected:
 			items.append(item['filename'])
 
-		result = self.dialog_device_delete_confirmation(items)
+		result = self.dialog_delete_confirmation(items)
 
-	def dialog_device_delete_confirmation(self, items):
+		if result == gtk.RESPONSE_OK:
+			for item in items:
+				full_item_path = os.path.join(self.device_cwd, item)
+				self.aafm.device_delete_item(full_item_path)
+				self.refresh_device_files()
+		else:
+			print 'no no'
+
+
+	def dialog_delete_confirmation(self, items):
 		items.sort()
 		joined = ', '.join(items)
 		print joined
@@ -294,14 +335,7 @@ class Aafm_GUI:
 		result = dialog.run()
 		
 		dialog.destroy()
-		
-		if result == gtk.RESPONSE_OK:
-			for item in items:
-				full_item_path = os.path.join(self.device_cwd, item)
-				self.aafm.device_delete_item(full_item_path)
-				self.refresh_device_files()
-		else:
-			print 'no no'
+		return result
 
 	def on_device_create_directory_callback(self, widget):
 		directory_name = self.dialog_get_directory_name()
