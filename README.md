@@ -27,3 +27,10 @@ The line above appends adb's path to whatever value $PATH held before. The path 
 	- path to adb
 	- last used directory
 - Empty directories are ignored when copying
+- Drag and drop
+	- to / from Nautilus
+	- to / from same panel
+	- between panels
+- Local panel actions
+- Find out host / device names
+- Finer granularity when reporting the progress of copy operations. Right now it's too coarse!
