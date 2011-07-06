@@ -31,8 +31,7 @@ The line above appends adb's path to whatever value $PATH held before. The path 
 	- to / from Nautilus
 	- to / from same panel
 	- between panels
-- Local panel actions
-- Find out host / device names
-- Finer granularity when reporting the progress of copy operations. Right now it's too coarse!
+- Find out Android device name
+- Finer granularity when reporting the progress of copy operations. Right now it's too coarse, and sometimes the window gets flagged as 'inactive' because it's not responding to the GTK loop (specially when copying huge files that take long or copying many files that take long too)
 - Show permissions/owner/etc columns
 - Right click when there's nothing selected-> maybe it should select the row below (saves one extra click)
