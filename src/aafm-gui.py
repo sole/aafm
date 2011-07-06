@@ -170,7 +170,8 @@ class Aafm_GUI:
 			menu = builder.get_object('menu')
 			builder.connect_signals({
 				'on_menuHostCopyToDevice_activate': self.on_host_copy_to_device_callback,
-				'on_menuHostCreateDirectory_activate': self.on_host_create_directory_callback
+				'on_menuHostCreateDirectory_activate': self.on_host_create_directory_callback,
+				'on_menuHostRefresh_activate': self.on_host_refresh_callback
 			})
 
 			# Ensure only right options are available
@@ -230,6 +231,10 @@ class Aafm_GUI:
 		if not os.path.exists(full_path):
 			os.mkdir(full_path)
 			self.refresh_host_files()
+
+
+	def on_host_refresh_callback(self, widget):
+		self.refresh_host_files()
 
 
 	def on_device_tree_view_contextual_menu(self, widget, event):

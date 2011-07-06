@@ -26,5 +26,13 @@
         <signal name="activate" handler="on_menuHostCreateDirectory_activate"/>
       </object>
     </child>
+    <child>
+      <object class="GtkMenuItem" id="menuHostRefresh">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Refresh</property>
+        <property name="use_underline">True</property>
+        <signal name="activate" handler="on_menuHostRefresh_activate"/>
+      </object>
+    </child>
   </object>
 </interface>
