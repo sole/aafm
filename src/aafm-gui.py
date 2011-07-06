@@ -267,7 +267,17 @@ class Aafm_GUI:
 			shutil.rmtree(path)
 
 	def on_host_rename_item_callback(self, widget):
-		pass
+		old_name = self.get_host_selected_files()[0]['filename']
+		new_name = self.dialog_get_item_name(old_name)
+
+		if new_name is None:
+			return
+
+		full_src_path = os.path.join(self.host_cwd, old_name)
+		full_dst_path = os.path.join(self.host_cwd, new_name)
+
+		shutil.move(full_src_path, full_dst_path)
+		self.refresh_host_files()
 
 	def on_device_tree_view_contextual_menu(self, widget, event):
 		if event.button == 3: # Right click
