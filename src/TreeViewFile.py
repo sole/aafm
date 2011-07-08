@@ -10,7 +10,7 @@ class TreeViewFile:
 		self.pixbufFile = pixbufFile
 		# GOTCHA: Number of columns in the store *MUST* match the number of values
 		# added in loadData
-		self.tree_store = gtk.TreeStore(gobject.TYPE_BOOLEAN, str, str)
+		self.tree_store = gtk.TreeStore(gobject.TYPE_BOOLEAN, str, str, str)
 		self.tree_view = gtk.TreeView(self.tree_store)
 		self.tree_view.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
 		self.scrolled_window = gtk.ScrolledWindow()
@@ -45,6 +45,15 @@ class TreeViewFile:
 		size_col.add_attribute(size_col_renderer, 'text', 2)
 		size_col.set_sort_column_id(2)
 
+		# TIMESTAMP
+		time_col = gtk.TreeViewColumn('Date modified')
+		self.tree_view.append_column(time_col)
+
+		time_col_renderer = gtk.CellRendererText()
+		time_col.pack_start(time_col_renderer, expand=True)
+		time_col.add_attribute(time_col_renderer, 'text', 3)
+		time_col.set_sort_column_id(3)
+
 
 	def render_dir_or_file(self, tree_view_column, cell, model, iter):
 		isDir = model.get_value(iter, 0)
@@ -71,6 +80,6 @@ class TreeViewFile:
 				size = ''
 			else:
 				size = str(row['size'])
-			rowIter = self.tree_store.append(None, [ row['directory'], row['name'], size ])
+			rowIter = self.tree_store.append(None, [ row['directory'], row['name'], size, row['timestamp'] ])
 
 

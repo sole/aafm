@@ -7,6 +7,7 @@ import gobject
 import os
 import shutil
 import socket
+import datetime
 
 from TreeViewFile import TreeViewFile
 from Aafm import Aafm
@@ -136,16 +137,30 @@ class Aafm_GUI:
 		dirs.sort()
 		files.sort()
 
-		output.append({'directory': True, 'name': '..', 'size': 0})
+		output.append({'directory': True, 'name': '..', 'size': 0, 'timestamp': ''})
 
 		for d in dirs:
-			output.append({'directory': True, 'name': d, 'size': 0})
+			output.append({
+				'directory': True,
+				'name': d,
+				'size': 0,
+				'timestamp': self.format_timestamp(os.path.getmtime(os.path.join(directory, d)))
+			})
 
 		for f in files:
 			size = os.path.getsize(os.path.join(directory, f))
-			output.append({'directory': False, 'name': f, 'size': size})
+			output.append({
+				'directory': False,
+				'name': f,
+				'size': size,
+				'timestamp': self.format_timestamp(os.path.getmtime(os.path.join(directory, f)))
+			})
 
 		return output
+
+	def format_timestamp(self, timestamp):
+		d = datetime.datetime.fromtimestamp(timestamp)
+		return d.strftime(r'%Y-%m-%d %H:%M')
 
 	""" Like dir_scan_host, but in the connected Android device """
 	def dir_scan_device(self, directory):
@@ -165,14 +180,24 @@ class Aafm_GUI:
 		dirs.sort()
 		files.sort()
 
-		output.append({'directory': True, 'name': '..', 'size': 0})
+		output.append({'directory': True, 'name': '..', 'size': 0, 'timestamp': ''})
 
 		for d in dirs:
-			output.append({'directory': True, 'name': d, 'size': 0})
+			output.append({
+				'directory': True,
+				'name': d,
+				'size': 0,
+				'timestamp': self.format_timestamp(entries[d]['timestamp'])
+			})
 
 		for f in files:
 			size = int(entries[f]['size'])
-			output.append({'directory': False, 'name': f, 'size': size})
+			output.append({
+				'directory': False,
+				'name': f,
+				'size': size,
+				'timestamp': self.format_timestamp(entries[f]['timestamp'])
+			})
 
 		return output
 

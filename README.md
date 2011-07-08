@@ -32,6 +32,7 @@ The line above appends adb's path to whatever value $PATH held before. The path 
 	- to / from same panel
 	- between panels
 - Find out Android device name
-- Finer granularity when reporting the progress of copy operations. Right now it's too coarse, and sometimes the window gets flagged as 'inactive' because it's not responding to the GTK loop (specially when copying huge files that take long or copying many files that take long too)
+- Finer granularity when reporting the progress of copy operations. Right now it's too coarse, and sometimes the window gets flagged as 'inactive' because it's not responding to the GTK loop (specially when copying huge files that take long or copying many files that take long too) (maybe use a queue...?)
+- Allow to cancel operations
 - Show permissions/owner/etc columns
 - Right click when there's nothing selected-> maybe it should select the row below (saves one extra click)
