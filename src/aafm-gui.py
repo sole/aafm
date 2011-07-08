@@ -8,6 +8,7 @@ import os
 import shutil
 import socket
 import datetime
+import stat
 
 from TreeViewFile import TreeViewFile
 from Aafm import Aafm
@@ -143,29 +144,56 @@ class Aafm_GUI:
 				'group': ''})
 
 		for d in dirs:
+			path = os.path.join(directory, d)
 			output.append({
 				'directory': True,
 				'name': d,
 				'size': 0,
-				'timestamp': self.format_timestamp(os.path.getmtime(os.path.join(directory, d))),
-				'permissions': '',
+				'timestamp': self.format_timestamp(os.path.getmtime(path)),
+				'permissions': self.get_permissions(path),
 				'owner': '',
 				'group': ''
 			})
 
 		for f in files:
-			size = os.path.getsize(os.path.join(directory, f))
+			path = os.path.join(directory, f)
+			size = os.path.getsize(path)
 			output.append({
 				'directory': False,
 				'name': f,
 				'size': size,
-				'timestamp': self.format_timestamp(os.path.getmtime(os.path.join(directory, f))),
-				'permissions': '',
+				'timestamp': self.format_timestamp(os.path.getmtime(path)),
+				'permissions': self.get_permissions(path),
 				'owner': '',
 				'group': ''
 			})
 
 		return output
+
+	def get_permissions(self, filename):
+		st = os.stat(filename)
+		mode = st.st_mode
+		permissions = ''
+
+		bits = [ 
+			stat.S_IRUSR, stat.S_IWUSR, stat.S_IXUSR,
+			stat.S_IRGRP, stat.S_IWGRP, stat.S_IXGRP,
+			stat.S_IROTH, stat.S_IWOTH, stat.S_IXOTH
+		]
+
+		attrs = ['r', 'w', 'x']
+
+		for i in range(0, len(bits)):
+			bit = bits[i]
+			attr = attrs[i % len(attrs)]
+
+			if bit & mode:
+				permissions += attr
+			else:
+				permissions += '-'
+
+		return permissions
+
 
 	def format_timestamp(self, timestamp):
 		d = datetime.datetime.fromtimestamp(timestamp)
