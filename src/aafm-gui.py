@@ -9,6 +9,8 @@ import shutil
 import socket
 import datetime
 import stat
+import pwd
+import grp
 
 from TreeViewFile import TreeViewFile
 from Aafm import Aafm
@@ -151,8 +153,8 @@ class Aafm_GUI:
 				'size': 0,
 				'timestamp': self.format_timestamp(os.path.getmtime(path)),
 				'permissions': self.get_permissions(path),
-				'owner': '',
-				'group': ''
+				'owner': self.get_owner(path),
+				'group': self.get_group(path)
 			})
 
 		for f in files:
@@ -164,12 +166,15 @@ class Aafm_GUI:
 				'size': size,
 				'timestamp': self.format_timestamp(os.path.getmtime(path)),
 				'permissions': self.get_permissions(path),
-				'owner': '',
-				'group': ''
+				'owner': self.get_owner(path),
+				'group': self.get_group(path)
 			})
 
 		return output
 
+	""" The following three methods are probably NOT the best way of doing things.
+	At least according to all the warnings that say os.stat is very costly
+	and should be cached."""
 	def get_permissions(self, filename):
 		st = os.stat(filename)
 		mode = st.st_mode
@@ -193,6 +198,17 @@ class Aafm_GUI:
 				permissions += '-'
 
 		return permissions
+
+	def get_owner(self, filename):
+		st = os.stat(filename)
+		uid = st.st_uid
+		user = pwd.getpwuid(uid)[0]
+		return user
+
+	def get_group(self, filename):
+		st = os.stat(filename)
+		gid = st.st_gid
+		return grp.getgrgid(gid)[0]
 
 
 	def format_timestamp(self, timestamp):
