@@ -65,10 +65,17 @@ class Aafm:
 				
 				is_directory = permissions.startswith('d')
 
-				entries[filename] = { 'is_directory': is_directory, 'size': fsize, 'timestamp': timestamp }
+				entries[filename] = { 
+					'is_directory': is_directory,
+					'size': fsize,
+					'timestamp': timestamp,
+					'permissions': permissions,
+					'owner': owner,
+					'group': group
+				}
 
 			else:
-				print filename, "wasn't matched, please report to the developer!"
+				print line, "wasn't matched, please report to the developer!"
 
 		return entries
 
