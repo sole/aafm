@@ -10,7 +10,7 @@ class TreeViewFile:
 		self.pixbufFile = pixbufFile
 		# GOTCHA: Number of columns in the store *MUST* match the number of values
 		# added in loadData
-		self.tree_store = gtk.TreeStore(gobject.TYPE_BOOLEAN, str, str, str)
+		self.tree_store = gtk.TreeStore(gobject.TYPE_BOOLEAN, str, str, str, str, str, str)
 		self.tree_view = gtk.TreeView(self.tree_store)
 		self.tree_view.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
 		self.scrolled_window = gtk.ScrolledWindow()
@@ -54,6 +54,33 @@ class TreeViewFile:
 		time_col.add_attribute(time_col_renderer, 'text', 3)
 		time_col.set_sort_column_id(3)
 
+		# PERMISSIONS
+		perm_col = gtk.TreeViewColumn('Permissions')
+		self.tree_view.append_column(perm_col)
+
+		perm_col_renderer = gtk.CellRendererText()
+		perm_col.pack_start(perm_col_renderer, expand=True)
+		perm_col.add_attribute(perm_col_renderer, 'text', 4)
+		perm_col.set_sort_column_id(4)
+
+		# OWNER
+		own_col = gtk.TreeViewColumn('Owner')
+		self.tree_view.append_column(own_col)
+
+		own_col_renderer = gtk.CellRendererText()
+		own_col.pack_start(own_col_renderer, expand=True)
+		own_col.add_attribute(own_col_renderer, 'text', 5)
+		own_col.set_sort_column_id(5)
+
+		# GROUP
+		group_col = gtk.TreeViewColumn('Group')
+		self.tree_view.append_column(group_col)
+
+		group_col_renderer = gtk.CellRendererText()
+		group_col.pack_start(group_col_renderer, expand=True)
+		group_col.add_attribute(group_col_renderer, 'text', 6)
+		group_col.set_sort_column_id(6)
+
 
 	def render_dir_or_file(self, tree_view_column, cell, model, iter):
 		isDir = model.get_value(iter, 0)
@@ -80,6 +107,7 @@ class TreeViewFile:
 				size = ''
 			else:
 				size = str(row['size'])
-			rowIter = self.tree_store.append(None, [ row['directory'], row['name'], size, row['timestamp'] ])
+
+			rowIter = self.tree_store.append(None, [ row['directory'], row['name'], size, row['timestamp'], row['permissions'], row['owner'], row['group'] ])
 
 

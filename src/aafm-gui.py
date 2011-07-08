@@ -137,14 +137,20 @@ class Aafm_GUI:
 		dirs.sort()
 		files.sort()
 
-		output.append({'directory': True, 'name': '..', 'size': 0, 'timestamp': ''})
+		output.append({'directory': True, 'name': '..', 'size': 0, 'timestamp': '',
+				'permissions': '',
+				'owner': '',
+				'group': ''})
 
 		for d in dirs:
 			output.append({
 				'directory': True,
 				'name': d,
 				'size': 0,
-				'timestamp': self.format_timestamp(os.path.getmtime(os.path.join(directory, d)))
+				'timestamp': self.format_timestamp(os.path.getmtime(os.path.join(directory, d))),
+				'permissions': '',
+				'owner': '',
+				'group': ''
 			})
 
 		for f in files:
@@ -153,7 +159,10 @@ class Aafm_GUI:
 				'directory': False,
 				'name': f,
 				'size': size,
-				'timestamp': self.format_timestamp(os.path.getmtime(os.path.join(directory, f)))
+				'timestamp': self.format_timestamp(os.path.getmtime(os.path.join(directory, f))),
+				'permissions': '',
+				'owner': '',
+				'group': ''
 			})
 
 		return output
@@ -180,14 +189,17 @@ class Aafm_GUI:
 		dirs.sort()
 		files.sort()
 
-		output.append({'directory': True, 'name': '..', 'size': 0, 'timestamp': ''})
+		output.append({'directory': True, 'name': '..', 'size': 0, 'timestamp': '', 'permissions': '', 'owner': '', 'group': ''})
 
 		for d in dirs:
 			output.append({
 				'directory': True,
 				'name': d,
 				'size': 0,
-				'timestamp': self.format_timestamp(entries[d]['timestamp'])
+				'timestamp': self.format_timestamp(entries[d]['timestamp']), 
+				'permissions': entries[d]['permissions'],
+				'owner': entries[d]['owner'],
+				'group': entries[d]['group']
 			})
 
 		for f in files:
@@ -196,7 +208,10 @@ class Aafm_GUI:
 				'directory': False,
 				'name': f,
 				'size': size,
-				'timestamp': self.format_timestamp(entries[f]['timestamp'])
+				'timestamp': self.format_timestamp(entries[f]['timestamp']),
+				'permissions': entries[f]['permissions'],
+				'owner': entries[f]['owner'],
+				'group': entries[f]['group']
 			})
 
 		return output
