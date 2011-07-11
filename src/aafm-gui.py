@@ -17,13 +17,19 @@ from Aafm import Aafm
 
 
 class Aafm_GUI:
+
+	QUEUE_ACTION_COPY_TO_DEVICE = 'copy_to_device'
+	QUEUE_ACTION_COPY_FROM_DEVICE = 'copy_from_device'
+
 	def __init__(self):
 		
 		# The super core
 		self.aafm = Aafm('adb', os.getcwd(), '/mnt/sdcard/')
+		self.queue = []
 
 		self.basedir = os.path.dirname(os.path.abspath(__file__))
 
+		# Build main window from XML
 		builder = gtk.Builder()
 		builder.add_from_file(os.path.join(self.basedir, "data/glade/interface.xml"))
 		builder.connect_signals({ "on_window_destroy" : gtk.main_quit })
@@ -39,12 +45,27 @@ class Aafm_GUI:
 		self.host_treeViewFile.get_tree().connect('row-activated', self.host_navigate_callback)
 		hostFrame = builder.get_object('frameHost')
 		hostFrame.get_child().add(self.host_treeViewFile.get_view())
-		self.host_treeViewFile.get_tree().connect('button_press_event', self.on_host_tree_view_contextual_menu)
+		hostTree = self.host_treeViewFile.get_tree()
+		hostTree.connect('button_press_event', self.on_host_tree_view_contextual_menu)
+		hostTree.drag_dest_set(0, [], 0)
+		hostTree.connect('drag_drop', self.on_host_drag_and_drop_callback)
+		
 		self.hostFrame = hostFrame
 		self.hostName = socket.gethostname()
 
+
 		self.device_treeViewFile = TreeViewFile(imageDir.get_pixbuf(), imageFile.get_pixbuf())
-		self.device_treeViewFile.get_tree().connect('row-activated', self.device_navigate_callback)
+		deviceTree = self.device_treeViewFile.get_tree()
+		deviceTree.connect('row-activated', self.device_navigate_callback)
+		#deviceTree.drag_dest_set(0, [], 0)
+		deviceTree.enable_model_drag_dest(
+			[('text/plain', 0, 0)],
+			gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE
+		)
+		deviceTree.connect('drag-data-received', self.on_device_drag_data_received)
+		#deviceTree.connect('drag_motion', self.on_device_drag_motion_callback)
+		#deviceTree.connect('drag_drop', self.on_device_drag_and_drop_callback)
+
 		deviceFrame = builder.get_object('frameDevice')
 		deviceFrame.get_child().add(self.device_treeViewFile.get_view())
 		self.device_treeViewFile.get_tree().connect('button_press_event', self.on_device_tree_view_contextual_menu)
@@ -294,37 +315,12 @@ class Aafm_GUI:
 
 	# Copy to device
 	def on_host_copy_to_device_callback(self, widget):
-		print 'copy to host'
-		selected = self.get_host_selected_files()
-		task = self.copy_to_device_task(selected)
-		gobject.idle_add(task.next)
+		for row in self.get_host_selected_files():
+			src = os.path.join(self.host_cwd, row['filename'])
+			self.add_to_queue(self.QUEUE_ACTION_COPY_TO_DEVICE, src, self.device_cwd)
+		self.process_queue()
 
-	def copy_to_device_task(self, rows):
-		completed = 0
-		total = len(rows)
-		self.update_progress()
-
-		for row in rows:
-			filename = row['filename']
-			full_host_path = os.path.join(self.host_cwd, filename)
-
-			"""if os.path.isfile(full_host_path):
-				full_device_path = self.device_cwd
-			else:
-				full_device_path = os.path.join(self.device_cwd, filename)"""
-
-			full_device_path = self.device_cwd
-
-			self.aafm.copy_to_device(full_host_path, full_device_path)
-			completed = completed + 1
-			self.refresh_device_files()
-			self.update_progress(completed * 1.0 / total)
-
-			yield True
-
-		yield False
-
-
+	
 	# Create host directory
 	def on_host_create_directory_callback(self, widget):
 		directory_name = self.dialog_get_directory_name()
@@ -585,6 +581,79 @@ class Aafm_GUI:
 		if value >= 1:
 			self.progress_bar.set_text("Done")
 			self.progress_bar.set_fraction(0)
+
+
+	def on_host_drag_and_drop_callback(self, wid, context, x, y, time):
+		print "HOST DND", wid, context, x, y, time
+
+
+	def on_device_drag_motion_callback(self, wid, context, x, y, time):
+		context.drag_status(gtk.gdk.ACTION_COPY, time)
+		return True
+
+	def on_device_drag_and_drop_callback(self, wid, context, x, y, time):
+		print "DEVICE DND", wid, context, x, y, time
+		for t in context.targets:
+			print t
+		context.finish(True, False, time)
+		return True
+	
+	
+	def on_device_drag_data_received(self, tree_view, context, x, y, selection, info, timestamp):
+		data = selection.data
+		drop_info = tree_view.get_dest_row_at_pos(x, y)
+		destination = self.device_cwd
+
+		# When dropped over a row
+		if drop_info:
+			model = tree_view.get_model()
+			path, position = drop_info
+			
+			if position == gtk.TREE_VIEW_DROP_INTO_OR_AFTER:
+				iter = model.get_iter(path)
+				is_directory = model.get_value(iter, 0)
+				name = model.get_value(iter, 1)
+
+				# If dropping over a folder, copy things to that folder
+				if is_directory:
+					destination = os.path.join(self.device_cwd, name)
+
+		# COPY stuff
+		for line in [line.strip() for line in data.split('\n')]:
+			if line.startswith('file://'):
+				source = line.replace('file://', '', 1)
+				self.add_to_queue(self.QUEUE_ACTION_COPY_TO_DEVICE, source, destination)
+		self.process_queue()
+
+
+	def add_to_queue(self, action, src_file, dst_path):
+		self.queue.append([action, src_file, dst_path])
+	
+	def process_queue(self):
+		task = self.process_queue_task()
+		gobject.idle_add(task.next)
+	
+	def process_queue_task(self):
+		completed = 0
+		self.update_progress()
+
+		while len(self.queue) > 0:
+			item = self.queue.pop()
+			action, src, dst = item
+
+			if action == self.QUEUE_ACTION_COPY_TO_DEVICE:
+				self.aafm.copy_to_device(src, dst)
+				self.refresh_device_files()
+
+			completed = completed + 1
+			total = len(self.queue) + 1
+			self.update_progress(completed * 1.0 / total)
+
+			yield True
+
+		yield False
+
+
 
 	def die_callback(self, widget, data=None):
 		self.destroy(widget, data)
