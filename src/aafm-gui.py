@@ -47,6 +47,8 @@ class Aafm_GUI:
 		hostFrame.get_child().add(self.host_treeViewFile.get_view())
 		hostTree = self.host_treeViewFile.get_tree()
 		hostTree.connect('button_press_event', self.on_host_tree_view_contextual_menu)
+		hostTree.enable_model_drag_source(gtk.gdk.BUTTON1_MASK, [('text/plain', 0, 0)], gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY | gtk.gdk.ACTION_MOVE)
+		hostTree.connect('drag_data_get', self.on_host_drag_data_get)
 		hostTree.drag_dest_set(0, [], 0)
 		hostTree.connect('drag_drop', self.on_host_drag_and_drop_callback)
 		
@@ -58,11 +60,13 @@ class Aafm_GUI:
 		deviceTree = self.device_treeViewFile.get_tree()
 		deviceTree.connect('row-activated', self.device_navigate_callback)
 		#deviceTree.drag_dest_set(0, [], 0)
+		#deviceTree.enable_model_drag_source(0, [], gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE)
 		deviceTree.enable_model_drag_dest(
 			[('text/plain', 0, 0)],
 			gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE
 		)
 		deviceTree.connect('drag-data-received', self.on_device_drag_data_received)
+		
 		#deviceTree.connect('drag_motion', self.on_device_drag_motion_callback)
 		#deviceTree.connect('drag_drop', self.on_device_drag_and_drop_callback)
 
@@ -282,6 +286,7 @@ class Aafm_GUI:
 		return output
 
 	def on_host_tree_view_contextual_menu(self, widget, event):
+		print 'button press'
 		if event.button == 3: # Right click
 			builder = gtk.Builder()
 			builder.add_from_file(os.path.join(self.basedir, 'data/glade/menu_contextual_host.xml'))
@@ -585,6 +590,11 @@ class Aafm_GUI:
 
 	def on_host_drag_and_drop_callback(self, wid, context, x, y, time):
 		print "HOST DND", wid, context, x, y, time
+
+	def on_host_drag_data_get(self, widget, context, selection, target_type, time):
+		data = '\n'.join(['file://' + os.path.join(self.host_cwd, item['filename']) for item in self.get_host_selected_files()])
+		
+		selection.set(selection.target, 8, data)
 
 
 	def on_device_drag_motion_callback(self, wid, context, x, y, time):
