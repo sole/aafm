@@ -52,10 +52,25 @@ class Aafm_GUI:
 		hostTree = self.host_treeViewFile.get_tree()
 		hostTree.connect('row-activated', self.host_navigate_callback)
 		hostTree.connect('button_press_event', self.on_host_tree_view_contextual_menu)
-		
-		hostTree.enable_model_drag_source(gtk.gdk.BUTTON1_MASK, [('text/plain', 0, 0)], gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY | gtk.gdk.ACTION_MOVE)
+	
+		host_targets = [
+			('DRAG_SELF', gtk.TARGET_SAME_WIDGET, 0),
+			('ADB_text', 0, 1),
+			('text/plain', 0, 2)
+		]
+
+		hostTree.enable_model_drag_dest(
+			host_targets,
+			gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY | gtk.gdk.ACTION_MOVE
+		)
+		hostTree.connect('drag-data-received', self.on_host_drag_data_received)
+
+		hostTree.enable_model_drag_source(
+			gtk.gdk.BUTTON1_MASK,
+			host_targets,
+			gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY | gtk.gdk.ACTION_MOVE
+		)
 		hostTree.connect('drag_data_get', self.on_host_drag_data_get)
-		hostTree.drag_dest_set(0, [], 0)
 		
 		self.hostFrame = hostFrame
 		self.hostName = socket.gethostname()
@@ -73,7 +88,8 @@ class Aafm_GUI:
 
 		device_targets = [
 			('DRAG_SELF', gtk.TARGET_SAME_WIDGET, 0),
-			('text/plain', 0, 1)
+			('ADB_text', 0, 1),
+			('text/plain', 0, 2)
 		]
 
 		deviceTree.enable_model_drag_dest(
@@ -607,8 +623,42 @@ class Aafm_GUI:
 		
 		selection.set(selection.target, 8, data)
 
+	
+	def on_host_drag_data_received(self, tree_view, context, x, y, selection, info, timestamp):
+		data = selection.data
+		type = selection.type
+		drop_info = tree_view.get_dest_row_at_pos(x, y)
+		destination = self.host_cwd
+		
+		if drop_info:
+			model = tree_view.get_model()
+			path, position = drop_info
+			
+			if position in [ gtk.TREE_VIEW_DROP_INTO_OR_BEFORE, gtk.TREE_VIEW_DROP_INTO_OR_AFTER ]:
+				iter = model.get_iter(path)
+				is_directory = model.get_value(iter, 0)
+				name = model.get_value(iter, 1)
+
+				# If dropping over a folder, copy things to that folder
+				if is_directory:
+					destination = os.path.join(self.host_cwd, name)
+
+		if type == 'DRAG_SELF':
+			print 'to self'
+		elif type == 'ADB_text':
+			for line in [line.strip() for line in data.split('\n')]:
+				if line.startswith('file://'):
+					source = line.replace('file://', '', 1)
+					self.add_to_queue(self.QUEUE_ACTION_COPY_FROM_DEVICE, source, destination)
+		else:
+			print 'from somewhere else'
+
+		self.process_queue()
+
+
 
 	def on_device_drag_data_get(self, widget, context, selection, target_type, time):
+		print 'device drag get', selection.target
 		selection.set(selection.target, 8, '\n'.join(['file://' + os.path.join(self.device_cwd, item['filename']) for item in self.get_device_selected_files()]))
 	
 
@@ -669,6 +719,9 @@ class Aafm_GUI:
 			if action == self.QUEUE_ACTION_COPY_TO_DEVICE:
 				self.aafm.copy_to_device(src, dst)
 				self.refresh_device_files()
+			if action == self.QUEUE_ACTION_COPY_FROM_DEVICE:
+				self.aafm.copy_to_host(src, dst)
+				self.refresh_host_files()
 			elif action == self.QUEUE_ACTION_MOVE_IN_DEVICE:
 				self.aafm.device_rename_item(src, dst)
 				self.refresh_device_files()
