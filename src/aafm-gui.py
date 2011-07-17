@@ -20,6 +20,7 @@ class Aafm_GUI:
 
 	QUEUE_ACTION_COPY_TO_DEVICE = 'copy_to_device'
 	QUEUE_ACTION_COPY_FROM_DEVICE = 'copy_from_device'
+	QUEUE_ACTION_MOVE_IN_DEVICE = 'move_in_device'
 
 	def __init__(self):
 		
@@ -55,7 +56,6 @@ class Aafm_GUI:
 		hostTree.enable_model_drag_source(gtk.gdk.BUTTON1_MASK, [('text/plain', 0, 0)], gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY | gtk.gdk.ACTION_MOVE)
 		hostTree.connect('drag_data_get', self.on_host_drag_data_get)
 		hostTree.drag_dest_set(0, [], 0)
-		hostTree.connect('drag_drop', self.on_host_drag_and_drop_callback)
 		
 		self.hostFrame = hostFrame
 		self.hostName = socket.gethostname()
@@ -71,11 +71,22 @@ class Aafm_GUI:
 		deviceTree.connect('row-activated', self.device_navigate_callback)
 		deviceTree.connect('button_press_event', self.on_device_tree_view_contextual_menu)
 
+		device_targets = [
+			('DRAG_SELF', gtk.TARGET_SAME_WIDGET, 0),
+			('text/plain', 0, 1)
+		]
+
 		deviceTree.enable_model_drag_dest(
-			[('text/plain', 0, 0)],
-			gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE
+			device_targets,
+			gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY | gtk.gdk.ACTION_MOVE
 		)
 		deviceTree.connect('drag-data-received', self.on_device_drag_data_received)
+		deviceTree.enable_model_drag_source(
+			gtk.gdk.BUTTON1_MASK,
+			device_targets,
+			gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY | gtk.gdk.ACTION_MOVE
+		)
+		deviceTree.connect('drag-data-get', self.on_device_drag_data_get)
 		
 		self.deviceFrame = deviceFrame
 
@@ -433,7 +444,6 @@ class Aafm_GUI:
 	def dialog_delete_confirmation(self, items):
 		items.sort()
 		joined = ', '.join(items)
-		print joined
 		dialog = gtk.MessageDialog(
 			parent = None,
 			flags = gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
@@ -592,38 +602,29 @@ class Aafm_GUI:
 			self.progress_bar.set_fraction(0)
 
 
-	def on_host_drag_and_drop_callback(self, wid, context, x, y, time):
-		print "HOST DND", wid, context, x, y, time
-
 	def on_host_drag_data_get(self, widget, context, selection, target_type, time):
 		data = '\n'.join(['file://' + os.path.join(self.host_cwd, item['filename']) for item in self.get_host_selected_files()])
 		
 		selection.set(selection.target, 8, data)
 
 
-	def on_device_drag_motion_callback(self, wid, context, x, y, time):
-		context.drag_status(gtk.gdk.ACTION_COPY, time)
-		return True
+	def on_device_drag_data_get(self, widget, context, selection, target_type, time):
+		selection.set(selection.target, 8, '\n'.join(['file://' + os.path.join(self.device_cwd, item['filename']) for item in self.get_device_selected_files()]))
+	
 
-	def on_device_drag_and_drop_callback(self, wid, context, x, y, time):
-		print "DEVICE DND", wid, context, x, y, time
-		for t in context.targets:
-			print t
-		context.finish(True, False, time)
-		return True
-	
-	
 	def on_device_drag_data_received(self, tree_view, context, x, y, selection, info, timestamp):
+
 		data = selection.data
+		type = selection.type
 		drop_info = tree_view.get_dest_row_at_pos(x, y)
 		destination = self.device_cwd
-
+		
 		# When dropped over a row
 		if drop_info:
 			model = tree_view.get_model()
 			path, position = drop_info
 			
-			if position == gtk.TREE_VIEW_DROP_INTO_OR_AFTER:
+			if position in [ gtk.TREE_VIEW_DROP_INTO_OR_BEFORE, gtk.TREE_VIEW_DROP_INTO_OR_AFTER ]:
 				iter = model.get_iter(path)
 				is_directory = model.get_value(iter, 0)
 				name = model.get_value(iter, 1)
@@ -632,17 +633,27 @@ class Aafm_GUI:
 				if is_directory:
 					destination = os.path.join(self.device_cwd, name)
 
-		# COPY stuff
-		for line in [line.strip() for line in data.split('\n')]:
-			if line.startswith('file://'):
-				source = line.replace('file://', '', 1)
-				self.add_to_queue(self.QUEUE_ACTION_COPY_TO_DEVICE, source, destination)
+			if type == 'DRAG_SELF':
+				if self.device_cwd != destination:
+					for line in [line.strip() for line in data.split('\n')]:
+						if line.startswith('file://'):
+							source = line.replace('file://', '', 1)
+							if source != destination:
+								name = os.path.basename(source)
+								self.add_to_queue(self.QUEUE_ACTION_MOVE_IN_DEVICE, source, os.path.join(destination, name))
+			else:
+				# COPY stuff
+				for line in [line.strip() for line in data.split('\n')]:
+					if line.startswith('file://'):
+						source = line.replace('file://', '', 1)
+						self.add_to_queue(self.QUEUE_ACTION_COPY_TO_DEVICE, source, destination)
 		self.process_queue()
 
 
 	def add_to_queue(self, action, src_file, dst_path):
 		self.queue.append([action, src_file, dst_path])
 	
+
 	def process_queue(self):
 		task = self.process_queue_task()
 		gobject.idle_add(task.next)
@@ -657,6 +668,9 @@ class Aafm_GUI:
 
 			if action == self.QUEUE_ACTION_COPY_TO_DEVICE:
 				self.aafm.copy_to_device(src, dst)
+				self.refresh_device_files()
+			elif action == self.QUEUE_ACTION_MOVE_IN_DEVICE:
+				self.aafm.device_rename_item(src, dst)
 				self.refresh_device_files()
 
 			completed = completed + 1
