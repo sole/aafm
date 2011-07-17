@@ -22,6 +22,11 @@ class Aafm_GUI:
 	QUEUE_ACTION_COPY_FROM_DEVICE = 'copy_from_device'
 	QUEUE_ACTION_MOVE_IN_DEVICE = 'move_in_device'
 
+	# These constants are for dragging files to Nautilus
+	XDS_ATOM = gtk.gdk.atom_intern("XdndDirectSave0")
+	TEXT_ATOM = gtk.gdk.atom_intern("text/plain")
+	XDS_FILENAME = 'whatever.txt'
+
 	def __init__(self):
 		
 		# The super core
@@ -89,7 +94,8 @@ class Aafm_GUI:
 		device_targets = [
 			('DRAG_SELF', gtk.TARGET_SAME_WIDGET, 0),
 			('ADB_text', 0, 1),
-			('text/plain', 0, 2)
+			('XdndDirectSave0', 0, 2),
+			('text/plain', 0, 3)
 		]
 
 		deviceTree.enable_model_drag_dest(
@@ -97,12 +103,14 @@ class Aafm_GUI:
 			gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY | gtk.gdk.ACTION_MOVE
 		)
 		deviceTree.connect('drag-data-received', self.on_device_drag_data_received)
+		
 		deviceTree.enable_model_drag_source(
 			gtk.gdk.BUTTON1_MASK,
 			device_targets,
 			gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY | gtk.gdk.ACTION_MOVE
 		)
 		deviceTree.connect('drag-data-get', self.on_device_drag_data_get)
+		deviceTree.connect('drag-begin', self.on_device_drag_begin)
 		
 		self.deviceFrame = deviceFrame
 
@@ -657,9 +665,30 @@ class Aafm_GUI:
 
 
 
+	def on_device_drag_begin(self, widget, context):
+		print 'device drag begin'
+		
+		context.source_window.property_change(self.XDS_ATOM, self.TEXT_ATOM, 8, gtk.gdk.PROP_MODE_REPLACE, self.XDS_FILENAME)
+	
+
 	def on_device_drag_data_get(self, widget, context, selection, target_type, time):
-		print 'device drag get', selection.target
-		selection.set(selection.target, 8, '\n'.join(['file://' + os.path.join(self.device_cwd, item['filename']) for item in self.get_device_selected_files()]))
+		print 'device drag get', selection.target, target_type
+
+		if selection.target == 'XdndDirectSave0':
+			type, format, destination_file = context.source_window.property_get(self.XDS_ATOM, self.TEXT_ATOM)
+
+			if destination_file.startswith('file://'):
+				destination = (os.path.dirname(destination_file)).replace('file://', '', 1)
+				for item in self.get_device_selected_files():
+					self.add_to_queue(self.QUEUE_ACTION_COPY_FROM_DEVICE, os.path.join(self.device_cwd, item['filename']), destination)
+
+				self.process_queue()
+			else:
+				print "ERROR: Destination doesn't start with file://?!!?"
+
+
+		else:
+			selection.set(selection.target, 8, '\n'.join(['file://' + os.path.join(self.device_cwd, item['filename']) for item in self.get_device_selected_files()]))
 	
 
 	def on_device_drag_data_received(self, tree_view, context, x, y, selection, info, timestamp):
