@@ -21,6 +21,7 @@ class Aafm_GUI:
 	QUEUE_ACTION_COPY_TO_DEVICE = 'copy_to_device'
 	QUEUE_ACTION_COPY_FROM_DEVICE = 'copy_from_device'
 	QUEUE_ACTION_MOVE_IN_DEVICE = 'move_in_device'
+	QUEUE_ACTION_MOVE_IN_HOST = 'move_in_host'
 
 	# These constants are for dragging files to Nautilus
 	XDS_ATOM = gtk.gdk.atom_intern("XdndDirectSave0")
@@ -651,7 +652,17 @@ class Aafm_GUI:
 				if is_directory:
 					destination = os.path.join(self.host_cwd, name)
 
-		if type == 'DRAG_SELF':
+		for line in [line.strip() for line in data.split('\n')]:
+			if line.startswith('file://'):
+				source = line.replace('file://', '', 1)
+
+				if type == 'DRAG_SELF':
+					self.add_to_queue(self.QUEUE_ACTION_MOVE_IN_HOST, source, destination)
+				elif type == 'ADB_text':
+					self.add_to_queue(self.QUEUE_ACTION_COPY_FROM_DEVICE, source, destination)
+
+
+		"""if type == 'DRAG_SELF':
 			print 'to self'
 		elif type == 'ADB_text':
 			for line in [line.strip() for line in data.split('\n')]:
@@ -659,7 +670,7 @@ class Aafm_GUI:
 					source = line.replace('file://', '', 1)
 					self.add_to_queue(self.QUEUE_ACTION_COPY_FROM_DEVICE, source, destination)
 		else:
-			print 'from somewhere else'
+			print 'from somewhere else'"""
 
 		self.process_queue()
 
@@ -754,6 +765,9 @@ class Aafm_GUI:
 			elif action == self.QUEUE_ACTION_MOVE_IN_DEVICE:
 				self.aafm.device_rename_item(src, dst)
 				self.refresh_device_files()
+			elif action == self.QUEUE_ACTION_MOVE_IN_HOST:
+				shutil.move(src, dst)
+				self.refresh_host_files()
 
 			completed = completed + 1
 			total = len(self.queue) + 1
