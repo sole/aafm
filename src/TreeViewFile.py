@@ -1,5 +1,6 @@
 import gtk
 import gobject
+import MultiDragTreeView
 
 """ A sort of TreeView container that serves for showing file listings """
 class TreeViewFile:
@@ -11,7 +12,7 @@ class TreeViewFile:
 		# GOTCHA: Number of columns in the store *MUST* match the number of values
 		# added in loadData
 		self.tree_store = gtk.TreeStore(gobject.TYPE_BOOLEAN, str, str, str, str, str, str)
-		self.tree_view = gtk.TreeView(self.tree_store)
+		self.tree_view = MultiDragTreeView.MultiDragTreeView(self.tree_store)
 		self.tree_view.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
 		self.scrolled_window = gtk.ScrolledWindow()
 		self.scrolled_window.add_with_viewport(self.tree_view)

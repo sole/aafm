@@ -286,7 +286,6 @@ class Aafm_GUI:
 		return output
 
 	def on_host_tree_view_contextual_menu(self, widget, event):
-		print 'button press'
 		if event.button == 3: # Right click
 			builder = gtk.Builder()
 			builder.add_from_file(os.path.join(self.basedir, 'data/glade/menu_contextual_host.xml'))
