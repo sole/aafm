@@ -119,6 +119,7 @@ class Aafm:
 	def copy_to_host(self, device_file, host_directory):
 		print "COPY FROM DEVICE: ", device_file, "=>", host_directory
 
+		# We can only copy to a destination path, not to a file
 		if os.path.isfile(host_directory):
 			print "ERROR", host_directory, "is a file, not a directory"
 			return
@@ -126,15 +127,17 @@ class Aafm:
 		if self.is_device_file_a_directory(device_file):
 			print device_file, "is a dir"
 
+			# make host_directory exists before copying anything
+			basename = os.path.basename(device_file)
+			host_directory = os.path.join(host_directory, basename)
+			if not os.path.exists(host_directory):
+				os.mkdir(host_directory)
+
 			# copy recursively!
 			entries = self.parse_device_list(self.device_list_files(device_file))
 
 			for filename, entry in entries.iteritems():
-				if entry['is_directory']:
-					self.copy_to_host(os.path.join(device_file, filename), os.path.join(host_directory, filename))
-				else:
-					self.copy_to_host(os.path.join(device_file, filename), host_directory)
-
+				self.copy_to_host(os.path.join(device_file, filename), host_directory)
 		else:
 			host_file = os.path.join(host_directory, os.path.basename(device_file))
 			self.execute('%s pull "%s" "%s"' % (self.adb, device_file, host_file))
