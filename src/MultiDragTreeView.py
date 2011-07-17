@@ -6,7 +6,7 @@ import pango
 	code.google.com/p/quodlibet/
 
 	QuodLibet is licensed under the GPL v2 License:
-	http://www.gnu.org/licenses/old-licenses/gpl-2.0.html	
+	http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 """
 
 class MultiDragTreeView(gtk.TreeView):
