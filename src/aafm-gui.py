@@ -41,12 +41,17 @@ class Aafm_GUI:
 		imageFile.set_from_file(os.path.join(self.basedir, './data/icons/file.png'))
 		
 		# Host and device TreeViews
+		
+		# HOST
 		self.host_treeViewFile = TreeViewFile(imageDir.get_pixbuf(), imageFile.get_pixbuf())
-		self.host_treeViewFile.get_tree().connect('row-activated', self.host_navigate_callback)
+		
 		hostFrame = builder.get_object('frameHost')
 		hostFrame.get_child().add(self.host_treeViewFile.get_view())
+		
 		hostTree = self.host_treeViewFile.get_tree()
+		hostTree.connect('row-activated', self.host_navigate_callback)
 		hostTree.connect('button_press_event', self.on_host_tree_view_contextual_menu)
+		
 		hostTree.enable_model_drag_source(gtk.gdk.BUTTON1_MASK, [('text/plain', 0, 0)], gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY | gtk.gdk.ACTION_MOVE)
 		hostTree.connect('drag_data_get', self.on_host_drag_data_get)
 		hostTree.drag_dest_set(0, [], 0)
@@ -56,24 +61,24 @@ class Aafm_GUI:
 		self.hostName = socket.gethostname()
 
 
+		# DEVICE
 		self.device_treeViewFile = TreeViewFile(imageDir.get_pixbuf(), imageFile.get_pixbuf())
+		
+		deviceFrame = builder.get_object('frameDevice')
+		deviceFrame.get_child().add(self.device_treeViewFile.get_view())
+
 		deviceTree = self.device_treeViewFile.get_tree()
 		deviceTree.connect('row-activated', self.device_navigate_callback)
-		#deviceTree.drag_dest_set(0, [], 0)
-		#deviceTree.enable_model_drag_source(0, [], gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE)
+		deviceTree.connect('button_press_event', self.on_device_tree_view_contextual_menu)
+
 		deviceTree.enable_model_drag_dest(
 			[('text/plain', 0, 0)],
 			gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE
 		)
 		deviceTree.connect('drag-data-received', self.on_device_drag_data_received)
 		
-		#deviceTree.connect('drag_motion', self.on_device_drag_motion_callback)
-		#deviceTree.connect('drag_drop', self.on_device_drag_and_drop_callback)
-
-		deviceFrame = builder.get_object('frameDevice')
-		deviceFrame.get_child().add(self.device_treeViewFile.get_view())
-		self.device_treeViewFile.get_tree().connect('button_press_event', self.on_device_tree_view_contextual_menu)
 		self.deviceFrame = deviceFrame
+
 
 		# Progress bar
 		self.progress_bar = builder.get_object('progressBar')
