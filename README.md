@@ -39,6 +39,8 @@ The line above appends ADB's path to whatever value $PATH held before. The path 
 
 For more information on ADB and a list of its features, read over here: http://developer.android.com/guide/developing/tools/adb.html
 
+Also, I haven't tried it myself, but it seems that it's possible to download and build a reduced subset of the Android SDK only, including ADB and a few more tools. This doesn't require Java installed in the system. This page describes how: http://lackingrhoticity.blogspot.com/2010/02/how-to-build-adb-android-debugger.html
+
 ### Close terminal and open it again ###
 
 So the changes to the PATH get current.
