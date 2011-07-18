@@ -5,24 +5,101 @@ aafm
 
 A command line + GUI (GTK based) Android ADB-based file manager
 
-The Android SDK must be installed in order for this to work.
+Recent Android releases (Honeycomb / 3.0+) replace the older USB mount protocol with the use of MTP (Massive Transfer Protocol). Unfortunately this is still very buggy and doesn't work as it should in any machine I have tested (and heard of): system slowing down to a halt when transferring large number of files, files which are there but cannot be seen by the computer... etc.
 
-## ADB? ##
+So I decided to go ahead and build a little utility that would if not fix, at least alleviate the pain of using Honeycomb devices. **aafm** uses ADB (one of the command line tools provided with the official Android SDK) for communicating with the Android device. This is the same method that IDEs implement.
 
-If you don't want to be specifying the path to adb all the time, just add the path that contains its executable to your $PATH environment variable.
-For example, edit .bashrc and add it like this:
+## Installing ##
 
-	PATH=$PATH:~/Applications/android-sdk-linux_86/platform-tools
+### Requirements ###
 
-The line above appends adb's path to whatever value $PATH held before. The path might be different, according to wherever you've installed the Android SDK.
+Python with PyGTK bindings, GTK, git, and the Android SDK
+
+### Clone repository ###
+
+Clone this repository to a place you fancy. For example, your Applications folder.
+
+   git clone git://github.com/sole/aafm.git ~/Applications/aafm
+
+### Install the Android SDK ###
+
+If it's not installed yet, download the SDK from its page and follow its instructions: http://developer.android.com/sdk/index.html
+
+Basically (at least in Linux) just download a zip file and unpack it to a known location. In my case it's ```~/Applications/android-sdk-linux_86```. Once that is done, you need to make sure that the ADB tool is readily accessible from a shell (which is what aafm uses internally).
+
+So to try that out, open a new terminal and type ```adb```. If it works, you should get a long help message that starts with something like ```Android Debug Bridge version 1.0.26```. If it doesn't work, you'll get something akin to ```adb: command not found```.
+
+In case it doesn't work, you need to add the path to ADB to the environment PATH variable. In Linux this is done by editing a file called .bashrc in your home folder. Locate a line that looks like ```PATH=$PATH``` and make it look like this:
+
+    PATH=$PATH:~/Applications/android-sdk-linux_86/platform-tools
+
+The line above appends ADB's path to whatever value $PATH held before. The path might be different, according to wherever you've installed the Android SDK.
+
+For more information on ADB and a list of its features, read over here: http://developer.android.com/guide/developing/tools/adb.html
+
+### Close terminal and open it again ###
+
+So the changes to the PATH get current.
+
+### Enable Debug mode in the device ###
+
+Go to _Settings → Applications → Development_ and make sure the USB debugging checkbox is ticked. You might get a scary warning saying debugging allows you to do nasty things--just ignore it.
+
+### Execute aafm ###
+
+To execute it, cd to the place where it's been cloned:
+
+    cd ~/Applications/aafm/src/
+
+And simply execute it:
+
+    ./aafm-gui.py
+
+Once you're satisfied it's working, you can also make a launcher or add it to your Gnome menu, of course!
+
+## Using it ##
+
+If everything works (and why shouldn't it?) you should get a window divided in two panels. The left side represents your host computer, and initially should show the files of the aafm directory, since you launched it from there. The right side represents your Android device's files --so it needs to be connected to the computer, and _USB debugging_ must be enabled in the device.
+You can navigate just as you would do with your favourite file explorer. Files can be dragged from one to another panel, directories created, files renamed. You can also drag from Nautilus (in GNOME) into the device panel, to copy files to the device, or drag _to_ Nautilus, for copying files from the device.
+
+Be warned that currently the progress reporting is a bit hackish and with large files it will appear as if the window has got frozen. It hasn't--it's just waiting for the ADB transfer to finish. In the future this should be fixed, but I haven't come up with the best solution yet.
+
+
+## License ##
+
+Copyright (C) 2011 Soledad Penades (http://soledadpenades.com)
+
+This software is licensed under a GPL V3 license. Please read the accompanying LICENSE.txt file for more details, but basically, if you modify this software and distribute it, you must make your changes public too, so that everyone can benefit from your work--just as you're doing with mine. 
+
+You can also make your changes public even if you don't plan on redistributing this application, okay? Sharing is good! :-)
+
 
 ## Attributions ##
 
-- Nice usability ideas from Mr.doob
-- FamFamFam icons
+- Nice usability ideas from Mr.doob: http://mrdoob.com/
+- FamFamFam icons: http://www.famfamfam.com/lab/icons/
 - XDS with PyGTK tutorial from http://rodney.id.au/dev/gnome/an-xds-example
 
+
+## Hacking ##
+
+I'm by no means a GTK/Python/ADB/Android expert. I'm just learning so this project will surely contain many things that can be improved or that are plain wrong, so feel free to clone the repository and submit pull requests :-)
+
+In order to make your life a bit easier I'll roughly show what each file does:
+
+* **Aafm.py** - a class that communicates with an Android device, using ADB via shell commands. Takes care of copying and reading files, listing and parsing directories, etc.
+* ** aafm-gui.py** - this is the GTK front-end. Takes care of building the window with the host and device panels, and issuing instructions to Aafm when the user requests something to be done.
+* **TreeViewFile.py** - a utility class that encapsulates a GTKTreeView and some more things in order to show file listings.
+* **MultiDragTreeView.py** - an awesome class developed by the guys of Quod Libet, that allows more than one element of a TreeView to be selected and dragged around.
+
+As you can see, an **aafm-cli.py** GUI counterpart is missing. There was one at the beginning but I didn't redo it when I rewrote most of the code from scratch. Feel free to... you know what, if you're interested in having a CLI version.
+
+This has been developed in a Ubuntu Linux 10.10 system. I have no idea whether it'll work in other systems or not.
+
+
 ## TO DO ##
+
+This is a public list of things I plan to do at some point. If you'd like some feature or think you've found a bug that is not in this list, please add it to the issue tracker at https://github.com/sole/aafm/issues
 
 - Create a settings file (in ~/.file_explorer?), to store...
 	- path to adb
