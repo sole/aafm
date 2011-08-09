@@ -45,6 +45,37 @@ Also, I haven't tried it myself, but it seems that it's possible to download and
 
 So the changes to the PATH get current.
 
+### Configure udev rules (if in Linux) ###
+
+You need to let the system know that when you connect your USB device (i.e. the tablet) it should allow you, as a non-root user, to access it. If you don't do that, you'll get a "Insufficient permissions for device" error.
+
+This is done by adding a new file that contains so called udev rules.
+
+For example, in Ubuntu 10.10 you would add a file in ```/etc/udev/rules.d/51-android.rules``` with the following content:
+
+    # Samsung
+    SUBSYSTEM=="usb", SYSFS{idVendor}=="04e8", MODE="0777"
+
+Then change the file permissions:
+
+    chmod a+r /etc/udev/rules.d/51-android.rules
+
+To make sure it worked, connect the device and try to run ```adb devices``` in a terminal. If it's working properly, you should see a list more or less like this:
+
+    List of devices attached 
+    4342354131444B534652	device
+
+The numbers aren't important, the important bit is that you see ```device``` instead of ```??????```.
+
+If it isn't, you might need to either disconnect the device and try again, or reload udev so that the rules are actually loaded. Try with this:
+
+    sudo /etc/init.d/udev restart
+
+If everything else fails, why not logging in and out? Or maybe restarting the system!?
+
+More information on udev rules and Android can be found on the official Android development guide: http://developer.android.com/guide/developing/device.html
+
+
 ### Enable Debug mode in the device ###
 
 Go to _Settings → Applications → Development_ and make sure the USB debugging checkbox is ticked. You might get a scary warning saying debugging allows you to do nasty things--just ignore it.
