@@ -71,7 +71,7 @@ If it isn't, you might need to either disconnect the device and try again, or re
 
     sudo /etc/init.d/udev restart
 
-If everything else fails, why not logging in and out? Or maybe restarting the system!?
+If everything else fails, try to log in and out again, or maybe even restart the system.
 
 More information on udev rules and Android can be found on the official Android development guide: http://developer.android.com/guide/developing/device.html
 
