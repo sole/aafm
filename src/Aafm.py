@@ -40,7 +40,7 @@ class Aafm:
 
 
 	def device_list_files(self, device_dir):
-		command = '%s shell ls -la "%s"' % (self.adb, device_dir)
+		command = '%s shell ls -l -a "%s"' % (self.adb, device_dir)
 		lines = self.execute(command)
 		return lines
 
