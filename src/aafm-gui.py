@@ -463,7 +463,7 @@ class Aafm_GUI:
 				self.aafm.device_delete_item(full_item_path)
 				self.refresh_device_files()
 		else:
-			print 'no no'
+			print('no no')
 
 
 	def dialog_delete_confirmation(self, items):
@@ -533,12 +533,12 @@ class Aafm_GUI:
 	def on_device_refresh_callback(self, widget):
 		self.refresh_device_files()
 
+
 	def on_device_copy_to_computer_callback(self, widget):
-		print 'copy to computer'
 		selected = self.get_device_selected_files()
-		
 		task = self.copy_from_device_task(selected)
 		gobject.idle_add(task.next)
+
 
 	def copy_from_device_task(self, rows):
 		completed = 0
@@ -546,12 +546,9 @@ class Aafm_GUI:
 
 		self.update_progress()
 
-		#while completed < total:
 		for row in rows:
-			#row = rows[completed]
-			#iter = model.get_iter(row)
-			filename = row['filename'] #model.get_value(iter, 1)
-			is_directory = row['is_directory'] #model.get_value(iter, 0)
+			filename = row['filename']
+			is_directory = row['is_directory']
 
 			full_device_path = os.path.join(self.device_cwd, filename)
 			if is_directory:
@@ -661,30 +658,17 @@ class Aafm_GUI:
 				elif type == 'ADB_text':
 					self.add_to_queue(self.QUEUE_ACTION_COPY_FROM_DEVICE, source, destination)
 
-
-		"""if type == 'DRAG_SELF':
-			print 'to self'
-		elif type == 'ADB_text':
-			for line in [line.strip() for line in data.split('\n')]:
-				if line.startswith('file://'):
-					source = line.replace('file://', '', 1)
-					self.add_to_queue(self.QUEUE_ACTION_COPY_FROM_DEVICE, source, destination)
-		else:
-			print 'from somewhere else'"""
-
 		self.process_queue()
 
 
 
 	def on_device_drag_begin(self, widget, context):
-		print 'device drag begin'
 		
 		context.source_window.property_change(self.XDS_ATOM, self.TEXT_ATOM, 8, gtk.gdk.PROP_MODE_REPLACE, self.XDS_FILENAME)
 	
 
 	def on_device_drag_data_get(self, widget, context, selection, target_type, time):
-		print 'device drag get', selection.target, target_type
-
+		
 		if selection.target == 'XdndDirectSave0':
 			type, format, destination_file = context.source_window.property_get(self.XDS_ATOM, self.TEXT_ATOM)
 
@@ -695,7 +679,7 @@ class Aafm_GUI:
 
 				self.process_queue()
 			else:
-				print "ERROR: Destination doesn't start with file://?!!?"
+				print("ERROR: Destination doesn't start with file://?!!?")
 
 
 		else:
