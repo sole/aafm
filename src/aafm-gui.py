@@ -12,6 +12,11 @@ import stat
 import pwd
 import grp
 
+if os.name == 'nt':
+	import win32api
+	import win32con
+	import win32security
+
 from TreeViewFile import TreeViewFile
 from Aafm import Aafm
 
@@ -35,6 +40,13 @@ class Aafm_GUI:
 		self.queue = []
 
 		self.basedir = os.path.dirname(os.path.abspath(__file__))
+		
+		if os.name == 'nt':
+			self.get_owner = self._get_owner_windows
+			self.get_group = self._get_group_windows
+		else:
+			self.get_owner = self._get_owner
+			self.get_group = self._get_group
 
 		# Build main window from XML
 		builder = gtk.Builder()
@@ -265,16 +277,25 @@ class Aafm_GUI:
 
 		return permissions
 
-	def get_owner(self, filename):
+	def _get_owner(self, filename):
 		st = os.stat(filename)
 		uid = st.st_uid
 		user = pwd.getpwuid(uid)[0]
 		return user
+		
+	def _get_owner_windows(self, filename):
+		sd = win32security.GetFileSecurity(filename, win32security.OWNER_SECURITY_INFORMATION)
+		owner_sid = sd.GetSecurityDescriptorOwner()
+		name, domain, type = win32security.LookupAccountSid(None, owner_sid)
+		return name
 
-	def get_group(self, filename):
+	def _get_group(self, filename):
 		st = os.stat(filename)
 		gid = st.st_gid
 		return grp.getgrgid(gid)[0]
+	
+	def _get_group_windows(self, filename):
+		return ""
 
 
 	def format_timestamp(self, timestamp):
