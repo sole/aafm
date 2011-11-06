@@ -161,7 +161,7 @@ class Aafm_GUI:
 		name = model.get_value(iter, 1)
 
 		if is_dir:
-			self.device_cwd = os.path.normpath(os.path.join(self.device_cwd, name))
+			self.device_cwd = self.aafm.device_path_normpath(self.aafm.device_path_join(self.device_cwd, name))
 			self.aafm.set_device_cwd(self.device_cwd)
 			self.refresh_device_files()
 
@@ -459,7 +459,7 @@ class Aafm_GUI:
 
 		if result == gtk.RESPONSE_OK:
 			for item in items:
-				full_item_path = os.path.join(self.device_cwd, item)
+				full_item_path = self.aafm.device_path_join(self.device_cwd, item)
 				self.aafm.device_delete_item(full_item_path)
 				self.refresh_device_files()
 		else:
@@ -490,7 +490,7 @@ class Aafm_GUI:
 		if directory_name is None:
 			return
 
-		full_path = os.path.join(self.device_cwd, directory_name)
+		full_path = self.aafm.device_path_join(self.device_cwd, directory_name)
 		self.aafm.device_make_directory(full_path)
 		self.refresh_device_files()
 
@@ -550,7 +550,7 @@ class Aafm_GUI:
 			filename = row['filename']
 			is_directory = row['is_directory']
 
-			full_device_path = os.path.join(self.device_cwd, filename)
+			full_device_path = self.aafm.device_path_join(self.device_cwd, filename)
 			if is_directory:
 				full_host_path = os.path.join(self.host_cwd, filename)
 			else:
@@ -572,8 +572,8 @@ class Aafm_GUI:
 		if new_name is None:
 			return
 
-		full_src_path = os.path.join(self.device_cwd, old_name)
-		full_dst_path = os.path.join(self.device_cwd, new_name)
+		full_src_path = self.aafm.device_path_join(self.device_cwd, old_name)
+		full_dst_path = self.aafm.device_path_join(self.device_cwd, new_name)
 
 		self.aafm.device_rename_item(full_src_path, full_dst_path)
 		self.refresh_device_files()
@@ -675,7 +675,7 @@ class Aafm_GUI:
 			if destination_file.startswith('file://'):
 				destination = (os.path.dirname(destination_file)).replace('file://', '', 1)
 				for item in self.get_device_selected_files():
-					self.add_to_queue(self.QUEUE_ACTION_COPY_FROM_DEVICE, os.path.join(self.device_cwd, item['filename']), destination)
+					self.add_to_queue(self.QUEUE_ACTION_COPY_FROM_DEVICE, self.aafm.device_path_join(self.device_cwd, item['filename']), destination)
 
 				self.process_queue()
 			else:
@@ -683,7 +683,7 @@ class Aafm_GUI:
 
 
 		else:
-			selection.set(selection.target, 8, '\n'.join(['file://' + os.path.join(self.device_cwd, item['filename']) for item in self.get_device_selected_files()]))
+			selection.set(selection.target, 8, '\n'.join(['file://' + self.aafm.device_path_join(self.device_cwd, item['filename']) for item in self.get_device_selected_files()]))
 	
 
 	def on_device_drag_data_received(self, tree_view, context, x, y, selection, info, timestamp):
@@ -705,7 +705,7 @@ class Aafm_GUI:
 
 				# If dropping over a folder, copy things to that folder
 				if is_directory:
-					destination = os.path.join(self.device_cwd, name)
+					destination = self.aafm.device_path_join(self.device_cwd, name)
 
 			if type == 'DRAG_SELF':
 				if self.device_cwd != destination:
@@ -713,7 +713,7 @@ class Aafm_GUI:
 						if line.startswith('file://'):
 							source = line.replace('file://', '', 1)
 							if source != destination:
-								name = os.path.basename(source)
+								name = self.aafm.device_path_basename(source)
 								self.add_to_queue(self.QUEUE_ACTION_MOVE_IN_DEVICE, source, os.path.join(destination, name))
 			else:
 				# COPY stuff

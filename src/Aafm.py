@@ -8,7 +8,20 @@ class Aafm:
 		self.adb = adb
 		self.host_cwd = host_cwd
 		self.device_cwd = device_cwd
-
+		
+		# The Android device should always use POSIX path style separators (/),
+		# so we can happily use os.path.join when running on Linux (which is POSIX)
+		# But we can't use it when running on Windows machines because they use '\\'
+		# So we'll import the robust, tested and proven posixpath module,
+		# instead of using an inferior poorman's replica.
+		# Not sure how much of a hack is this...
+		# Feel free to illuminate me if there's a better way.
+		pathmodule = __import__('posixpath')
+		
+		self._path_join_function = pathmodule.join
+		self._path_normpath_function = pathmodule.normpath
+		self._path_basename_function = pathmodule.basename
+		
 
 	def execute(self, command):
 		print "EXECUTE=", command
@@ -114,6 +127,19 @@ class Aafm:
 
 		else:
 			self.execute('%s shell rm "%s"' % (self.adb, path))
+
+
+	# See  __init__ for _path_join_function definition
+	def device_path_join(self, a, *p):
+		return self._path_join_function(a, *p)
+
+	# Again, see __init_ for how _path_normpath_function is defined
+	def device_path_normpath(self, path):
+		return self._path_normpath_function(path)
+
+	# idem
+	def device_path_basename(self, path):
+		return self._path_basename_function(path)
 
 
 	def copy_to_host(self, device_file, host_directory):
