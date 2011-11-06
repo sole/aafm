@@ -117,12 +117,32 @@ This software is licensed under a GPL V3 license. Please read the accompanying L
 You can also make your changes public even if you don't plan on redistributing this application, okay? Sharing is good! :-)
 
 
+## Change log ##
+
+2011 11 06 - **r3**
+
+* Fix issue #4: use correct path separator in device when running under Windows
+* Fix issue #5: support for finding out ownership in Windows
+* Python 3 compatibility
+* Start using REVISION file
+* README.md revised
+
+2011 09 30 - **r2**
+
+* Fix issue #3: ls -la fails in some devices
+
+2011 07 18 - **r1**
+
+* First initial release; basic functionality is here!
+
+
 ## Attributions ##
 
-- Nice usability ideas from Mr.doob: http://mrdoob.com/
-- FamFamFam icons: http://www.famfamfam.com/lab/icons/
-- XDS with PyGTK tutorial from http://rodney.id.au/dev/gnome/an-xds-example
-
+- Written by [Sole](http://soledadpenades.com)
+- Nice usability ideas from [Mr.doob](http://mrdoob.com/)
+- [FamFamFam icons](http://www.famfamfam.com/lab/icons/)
+- XDS with PyGTK [tutorial](http://rodney.id.au/dev/gnome/an-xds-example)
+- Issues and patches from [Toby Collett](https://github.com/thjc), [Peter Sinnott](https://github.com/psinnott) and [Alexalex89](https://github.com/Alexalex89).
 
 ## Hacking ##
 
@@ -137,7 +157,11 @@ In order to make your life a bit easier I'll roughly show what each file does:
 
 As you can see, an **aafm-cli.py** GUI counterpart is missing. There was one at the beginning but I didn't redo it when I rewrote most of the code from scratch. Feel free to... you know what, if you're interested in having a CLI version.
 
-This has been developed in a Ubuntu Linux 10.10 system. I have no idea whether it'll work in other systems or not.
+This was initially developed in an Ubuntu Linux 10.10 system. I thought it wouldn't work on other systems, but it seems people are using it in a lot of places though. Some environments where it's known to work:
+
+- Ubuntu 10.10, 11.04, 11.10
+- Arch Linux
+- Windows (!!!)
 
 
 ## TO DO ##
