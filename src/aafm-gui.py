@@ -11,6 +11,7 @@ import datetime
 import stat
 import pwd
 import grp
+import urllib
 
 if os.name == 'nt':
 	import win32api
@@ -646,7 +647,7 @@ class Aafm_GUI:
 
 
 	def on_host_drag_data_get(self, widget, context, selection, target_type, time):
-		data = '\n'.join(['file://' + os.path.join(self.host_cwd, item['filename']) for item in self.get_host_selected_files()])
+		data = '\n'.join(['file://' + urllib.quote(os.path.join(self.host_cwd, item['filename'])) for item in self.get_host_selected_files()])
 		
 		selection.set(selection.target, 8, data)
 
@@ -672,7 +673,7 @@ class Aafm_GUI:
 
 		for line in [line.strip() for line in data.split('\n')]:
 			if line.startswith('file://'):
-				source = line.replace('file://', '', 1)
+				source = urllib.unquote(line.replace('file://', '', 1))
 
 				if type == 'DRAG_SELF':
 					self.add_to_queue(self.QUEUE_ACTION_MOVE_IN_HOST, source, destination)
@@ -694,7 +695,7 @@ class Aafm_GUI:
 			type, format, destination_file = context.source_window.property_get(self.XDS_ATOM, self.TEXT_ATOM)
 
 			if destination_file.startswith('file://'):
-				destination = (os.path.dirname(destination_file)).replace('file://', '', 1)
+				destination = os.path.dirname(urllib.unquote(destination_file).replace('file://', '', 1))
 				for item in self.get_device_selected_files():
 					self.add_to_queue(self.QUEUE_ACTION_COPY_FROM_DEVICE, self.aafm.device_path_join(self.device_cwd, item['filename']), destination)
 
@@ -704,7 +705,7 @@ class Aafm_GUI:
 
 
 		else:
-			selection.set(selection.target, 8, '\n'.join(['file://' + self.aafm.device_path_join(self.device_cwd, item['filename']) for item in self.get_device_selected_files()]))
+			selection.set(selection.target, 8, '\n'.join(['file://' + urllib.quote(self.aafm.device_path_join(self.device_cwd, item['filename'])) for item in self.get_device_selected_files()]))
 	
 
 	def on_device_drag_data_received(self, tree_view, context, x, y, selection, info, timestamp):
@@ -728,20 +729,21 @@ class Aafm_GUI:
 				if is_directory:
 					destination = self.aafm.device_path_join(self.device_cwd, name)
 
-			if type == 'DRAG_SELF':
-				if self.device_cwd != destination:
-					for line in [line.strip() for line in data.split('\n')]:
-						if line.startswith('file://'):
-							source = line.replace('file://', '', 1)
-							if source != destination:
-								name = self.aafm.device_path_basename(source)
-								self.add_to_queue(self.QUEUE_ACTION_MOVE_IN_DEVICE, source, os.path.join(destination, name))
-			else:
-				# COPY stuff
+		if type == 'DRAG_SELF':
+			if self.device_cwd != destination:
 				for line in [line.strip() for line in data.split('\n')]:
 					if line.startswith('file://'):
-						source = line.replace('file://', '', 1)
-						self.add_to_queue(self.QUEUE_ACTION_COPY_TO_DEVICE, source, destination)
+						source = urllib.unquote(line.replace('file://', '', 1))
+						if source != destination:
+							name = self.aafm.device_path_basename(source)
+							self.add_to_queue(self.QUEUE_ACTION_MOVE_IN_DEVICE, source, os.path.join(destination, name))
+		else:
+			# COPY stuff
+			for line in [line.strip() for line in data.split('\n')]:
+				if line.startswith('file://'):
+					source = urllib.unquote(line.replace('file://', '', 1))
+					self.add_to_queue(self.QUEUE_ACTION_COPY_TO_DEVICE, source, destination)
+		
 		self.process_queue()
 
 

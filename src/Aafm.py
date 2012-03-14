@@ -52,7 +52,7 @@ class Aafm:
 
 
 	def get_device_file_list(self):
-		return self.parse_device_list( self.device_list_files(self.device_cwd) )
+		return self.parse_device_list( self.device_list_files( self._path_join_function(self.device_cwd, '') ) )
 
 	def probe_for_busybox(self):
 		command = '%s shell ls --help' % (self.adb)
@@ -74,9 +74,9 @@ class Aafm:
 		entries = {}
 
 		if self.busybox:
-			pattern = re.compile(r"^(?P<permissions>[drwx\-]+)\s+(?P<hardlinks>\d+)\s+(?P<owner>[\w_]+)\s+(?P<group>[\w_]+)\s+(?P<size>\d+)\s+(?P<datetime>\w{3} \w{3}\s+\d+\s+\d{2}:\d{2}:\d{2} \d{4}) (?P<name>.+)$")
+			pattern = re.compile(r"^(?P<permissions>[dl\-][rwx\-]+)\s+(?P<hardlinks>\d+)\s+(?P<owner>[\w_]+)\s+(?P<group>[\w_]+)\s+(?P<size>\d+)\s+(?P<datetime>\w{3} \w{3}\s+\d+\s+\d{2}:\d{2}:\d{2} \d{4}) (?P<name>.+)$")
 		else:
-			pattern = re.compile(r"^(?P<permissions>[drwx\-]+) (?P<owner>\w+)\W+(?P<group>[\w_]+)\W*(?P<size>\d+)?\W+(?P<datetime>\d{4}-\d{2}-\d{2} \d{2}:\d{2}) (?P<name>.+)$")
+			pattern = re.compile(r"^(?P<permissions>[dl\-][rwx\-]+) (?P<owner>\w+)\W+(?P<group>[\w_]+)\W*(?P<size>\d+)?\W+(?P<datetime>\d{4}-\d{2}-\d{2} \d{2}:\d{2}) (?P<name>.+)$")
 		for line in lines:
 			line = line.rstrip()
 			match = pattern.match(line)
@@ -97,6 +97,10 @@ class Aafm:
 				timestamp = time.mktime((time.strptime(match.group('datetime'), date_format)))
 				
 				is_directory = permissions.startswith('d')
+
+				if permissions.startswith('l'):
+					filename, target = filename.split(' -> ')
+					is_directory = self.is_device_file_a_directory(target)
 
 				entries[filename] = { 
 					'is_directory': is_directory,
