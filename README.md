@@ -15,7 +15,13 @@ So I decided to go ahead and build a little utility that would if not fix, at le
 
 ### Requirements ###
 
-Python with PyGTK bindings, GTK, git, and the Android SDK
+Python with PyGTK bindings, GTK, git, and the Android SDK.
+
+Getting these should be fairly straightforward if you're running any decent Linux distribution. If you're using Windows I believe there are next-next-next installers for everything. This leaves us with the third option which is Mac OS. Up until recently there wasn't an easy way to get any PyGTK software working in Mac OS, but turns out you can now download a binary build of PyGTK for Mac OS with which aafm works quite well!
+
+It can be downloaded from http://afb.users.sourceforge.net/zero-install/PyGTK.pkg ([more info](http://python.6.n6.nabble.com/Testing-PyGTK-installer-for-Mac-OS-X-td1948270.html)). Simply run the installer once downloaded, and then follow the instructions below as if you were running a proper Linux system.
+
+One note though: there are a few hiccups with the Mac version, but they are mostly cosmetic and won't prevent you from enjoying the software. Feel free to help correcting them if you have the know-how!
 
 ### Clone repository ###
 
@@ -31,7 +37,7 @@ Basically (at least in Linux) just download a zip file and unpack it to a known 
 
 So to try that out, open a new terminal and type ```adb```. If it works, you should get a long help message that starts with something like ```Android Debug Bridge version 1.0.26```. If it doesn't work, you'll get something akin to ```adb: command not found```.
 
-In case it doesn't work, you need to add the path to ADB to the environment PATH variable. In Linux this is done by editing a file called ```.bashrc``` in your home folder. Locate a line that looks like ```PATH=$PATH``` and make it look like this:
+In case it doesn't work, you need to add the path to ADB to the environment PATH variable. In Linux this is done by editing a file called ```.bashrc``` in your home folder (```.bash_profile``` in Mac OS). Locate a line that looks like ```PATH=$PATH``` and make it look like this:
 
     PATH=$PATH:~/Applications/android-sdk-linux_86/platform-tools
 
@@ -43,7 +49,7 @@ Also, I haven't tried it myself, but it seems that it's possible to download and
 
 ### Close terminal and open it again ###
 
-So the changes to the PATH get current.
+So the changes to the PATH get current. In Mac OS you might need to log in and out too.
 
 ### Configure udev rules (if in Linux) ###
 
@@ -56,7 +62,27 @@ For example, in Ubuntu 10.10 you would add a file in ```/etc/udev/rules.d/51-and
     # Samsung
     SUBSYSTEM=="usb", SYSFS{idVendor}=="04e8", MODE="0777"
 
-Then change the file permissions:
+You can find out the "idVendor" value by running lsusb in a terminal. That will output a list of the currently connected USB devices, such as for example this:
+
+```
+Bus 004 Device 006: ID 05ac:8218 Apple, Inc. 
+Bus 004 Device 003: ID 0a5c:4500 Broadcom Corp. BCM2046B1 USB 2.0 Hub (part of BCM2046 Bluetooth)
+Bus 004 Device 002: ID 05ac:0237 Apple, Inc. Internal Keyboard/Trackpad (ISO)
+Bus 004 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub
+Bus 003 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub
+Bus 002 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Bus 001 Device 004: ID 18d1:4e12 Google Inc. Nexus One Phone (Debug)
+Bus 001 Device 002: ID 05ac:8507 Apple, Inc. 
+Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+```
+
+Since I'd like to add support for browsing my Nexus One phone (because *aafm* works with every Android device that adb can connect to), I just need to look at the device with id *18d1:4e12*, and add the following line to the udev rules file:
+
+```
+SUBSYSTEM=="usb", SYSFS{idVendor}=="18d1", MODE="0666"
+```
+
+Save it, and then change the file permissions:
 
     chmod a+r /etc/udev/rules.d/51-android.rules
 
@@ -110,7 +136,7 @@ Be warned that currently the progress reporting is a bit hackish and with large 
 
 ## License ##
 
-Copyright (C) 2011 Soledad Penades (http://soledadpenades.com)
+Copyright (C) 2011-2012 Soledad Penades (http://soledadpenades.com).
 
 This software is licensed under a GPL V3 license. Please read the accompanying LICENSE.txt file for more details, but basically, if you modify this software and distribute it, you must make your changes public too, so that everyone can benefit from your work--just as you're doing with mine. 
 
@@ -118,6 +144,17 @@ You can also make your changes public even if you don't plan on redistributing t
 
 
 ## Change log ##
+
+2012 03 14 - **r4**
+
+Many interesting bugfixes and new features thanks to the work of Norman Rasmussen and Michał Kowalczuk. Thanks!
+
+* Add BusyBox support (by [sammael](http://github.com/sammael)). Fixes #11.
+* Handle device drops when there's no row present (by [normanr](http://github.com/normanr)). Fixes #9.
+* Handle symlinks on the device correctly (by [normanr](http://github.com/normanr)). Fixes #12.
+* Quote/Unquote special characters in drag&drop messages (by [normanr](http://github.com/normanr)). Fixes #10. 
+* Slightly improve the README. Clarify how to find out the device Id, add link to PyGTK binary for Mac users.
+* Move the TO DO list items that were on this README file over to the issue tracker in the project's page.
 
 2011 11 06 - **r3**
 
@@ -166,15 +203,7 @@ This was initially developed in an Ubuntu Linux 10.10 system. I thought it would
 
 ## TO DO ##
 
-This is a public list of things I plan to do at some point. If you'd like some feature or think you've found a bug that is not in this list, please add it to the issue tracker at https://github.com/sole/aafm/issues
+I'm now using Github's issue tracker to keep track of issues, bugs and wished-for features.
 
-- Create a settings file (in ~/.file_explorer?), to store...
-	- path to adb
-	- last used directory
-- Find out Android device name
-- Finer granularity when reporting the progress of copy operations. Right now it's too coarse, and sometimes the window gets flagged as 'inactive' because it's not responding to the GTK loop (specially when copying huge files that take long or copying many files that take long too) (maybe use a queue...?)
-- Allow to cancel operations
-- Right click when there's nothing selected-> maybe it should select the row below (saves one extra click)
-- Unify concepts: copy_to_device or copy_from_host? etc...
-- Use file queue everywhere else it's not being used yet
-- Refactor recursive operations in Aafm.py to simplify and debug them (specially the directories issues-should it create them or not?)
+If you'd like to have a certain feature or think you've found a bug that is not in the list, please add it to the issue tracker at https://github.com/sole/aafm/issues
+
