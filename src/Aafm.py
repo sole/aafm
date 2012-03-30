@@ -237,18 +237,18 @@ class Aafm:
 
 			print "Copying", host_file, "=>", device_directory
 
-			self.execute('%s push "%s" "%s"' % (self.adb, host_file, device_directory))
+			self.execute('%s push "%s" "%s"' % (self.adb, host_file, self.device_escape_path(device_directory)))
 		else:
 			print host_file, 'is a directory'
 
 			entries = os.listdir(host_file)
 
 			for entry in entries:
-				self.copy_to_device(os.path.join(host_file, entry), os.path.join(device_directory, os.path.basename(host_file)))
+				self.copy_to_device(os.path.join(host_file, entry), self.device_escape_path(os.path.join(device_directory, os.path.basename(host_file))))
 
 
 	def device_rename_item(self, device_src_path, device_dst_path):
-		items = self.parse_device_list(self.device_list_files(os.path.dirname(device_dst_path)))
+		items = self.parse_device_list(self.device_list_files(self.device_escape_path(os.path.dirname(device_dst_path))))
 		filename = os.path.basename(device_dst_path)
 		print filename
 
@@ -256,4 +256,4 @@ class Aafm:
 			print 'Filename %s already exists' % filename
 			return
 
-		self.execute('%s shell mv "%s" "%s"' % (self.adb, device_src_path, device_dst_path))
+		self.execute('%s shell mv "%s" "%s"' % (self.adb, self.device_escape_path(device_src_path), self.device_escape_path(device_dst_path)))
