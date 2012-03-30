@@ -117,6 +117,20 @@ class Aafm:
 		return entries
 
 
+	def device_escape_path(self, path):
+		s = path
+		
+		replacements = {
+			'(': '\(',
+			')': '\)'
+		}
+
+		for k, v in replacements.iteritems():
+			s = s.replace(k, v)
+
+		return s
+
+
 	def is_device_file_a_directory(self, device_file):
 		parent_dir = os.path.dirname(device_file)
 		filename = os.path.basename(device_file)
@@ -147,10 +161,10 @@ class Aafm:
 				self.device_delete_item(entry_full_path)
 
 			# finally delete the directory itself
-			self.execute('%s shell rmdir "%s"' % (self.adb, path))
+			self.execute('%s shell rmdir "%s"' % (self.adb, self.device_escape_path(path)))
 
 		else:
-			self.execute('%s shell rm "%s"' % (self.adb, path))
+			print(self.execute('%s shell rm "%s"' % (self.adb, self.device_escape_path(path))))
 
 
 	# See  __init__ for _path_join_function definition
