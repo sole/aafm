@@ -164,7 +164,7 @@ class Aafm:
 			self.execute('%s shell rmdir "%s"' % (self.adb, self.device_escape_path(path)))
 
 		else:
-			print(self.execute('%s shell rm "%s"' % (self.adb, self.device_escape_path(path))))
+			self.execute('%s shell rm "%s"' % (self.adb, self.device_escape_path(path)))
 
 
 	# See  __init__ for _path_join_function definition
