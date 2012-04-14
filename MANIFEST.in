@@ -1,0 +1,4 @@
+include aafm aafm.desktop LICENSE.txt setup.py
+include icon/*/*
+include icon/aafm.ico
+recursive-include src/
