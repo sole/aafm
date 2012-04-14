@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=0.4
+Type=Application
+Name=Aafm
+GenericName=Android filemanager
+GenericName[fi]=Android tiedostonhallinta
+Comment=Filemanager for Android devices, trough adb.
+Comment[fi]=Hallitse Android laitteen tiedostoja adb:n avulla.
+Exec=aafm
+Icon=aafm
+Categories=GTK;Utility
