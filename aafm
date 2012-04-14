@@ -3,7 +3,7 @@
 executable=""
 site_path=""
 
-#Check the correct name for python2 intrepeter, assume no one uses in distro with python
+#Check the correct name for python2 interpreter, assume no one uses in distro with python
 #version lower than 2.5.0
 
 which python > /dev/null 2>&1
@@ -36,10 +36,10 @@ if [ "$?" = "0" ]; then
 else
 	if [ "$executable" = "" ]; then
 		echo "Could not find the python executable to run the application with."
-		echo "Please enter the python 2 intrepeter executable's name or press enter to exit"
+		echo "Please enter the python 2 interpreter executable's name or press enter to exit"
 		read executable
 		if [ "$executable" = "" ]; then
-			echo "Please install a python2 intrepeter and try again. Exiting!"
+			echo "Please install a python2 interpreter and try again. Exiting!"
 			exit 1
 		fi
 	fi
@@ -49,5 +49,5 @@ fi
 site_path="$($executable -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")"
 
 #Launch Aafm from site-packages path and pass any arguments given
-$execuatble "${site_path}/aafm/aafm-gui.py" "$@"
+$executable "${site_path}/aafm/aafm-gui.py" "$@"
 
