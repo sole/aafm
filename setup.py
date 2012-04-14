@@ -7,7 +7,7 @@ prefix=sys.prefix + '/bin'
 
 setup(name='aafm',
       version='0.4',
-      description='Android filemanager, using adb.',
+      description='Android ADB File Manager',
       author='Soledad Penades',
       author_email='hello@soledadpenades.com',
       license='GPLv3',
