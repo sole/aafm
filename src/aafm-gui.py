@@ -293,7 +293,12 @@ class Aafm_GUI:
 	def _get_group(self, filename):
 		st = os.stat(filename)
 		gid = st.st_gid
-		return grp.getgrgid(gid)[0]
+		try:
+			groupname = grp.getgrgid(gid)[0]
+		except KeyError:
+			print 'unknown gid %d for file %s' % (gid, filename)
+			groupname = 'unknown'
+		return groupname
 	
 	def _get_group_windows(self, filename):
 		return ""
