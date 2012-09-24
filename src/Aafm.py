@@ -193,7 +193,7 @@ class Aafm:
 
 			# make host_directory exists before copying anything
 			basename = os.path.basename(device_file)
-			host_directory = os.path.join(host_directory, basename)
+			#host_directory = os.path.join(host_directory, basename)
 			if not os.path.exists(host_directory):
 				os.mkdir(host_directory)
 
