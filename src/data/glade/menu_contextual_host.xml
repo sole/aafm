@@ -4,7 +4,6 @@
   <!-- interface-naming-policy project-wide -->
   <object class="GtkMenu" id="menu">
     <property name="visible">True</property>
-    <property name="ubuntu_local">True</property>
     <child>
       <object class="GtkMenuItem" id="menuHostCopyToDevice">
         <property name="visible">True</property>
