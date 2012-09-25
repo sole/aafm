@@ -191,9 +191,7 @@ class Aafm:
 		if self.is_device_file_a_directory(device_file):
 			print device_file, "is a dir"
 
-			# make host_directory exists before copying anything
-			basename = os.path.basename(device_file)
-			#host_directory = os.path.join(host_directory, basename)
+			# make sure host_directory exists before copying anything
 			if not os.path.exists(host_directory):
 				os.mkdir(host_directory)
 
