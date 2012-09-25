@@ -2,6 +2,7 @@ import os
 import re
 import subprocess
 import time
+import pipes
 
 class Aafm:
 	def __init__(self, adb='adb', host_cwd=None, device_cwd='/'):
@@ -63,9 +64,9 @@ class Aafm:
 
 	def device_list_files(self, device_dir):
 		if self.busybox:
-			command = '%s shell ls -l -A -e --color=never "%s"' % (self.adb, device_dir)
+			command = '%s shell ls -l -A -e --color=never %s' % (self.adb, self.device_escape_path( device_dir))
 		else:
-			command = '%s shell ls -l -a "%s"' % (self.adb, device_dir)
+			command = '%s shell ls -l -a %s' % (self.adb, self.device_escape_path(device_dir))
 		lines = self.execute(command)
 		return lines
 
@@ -117,18 +118,10 @@ class Aafm:
 		return entries
 
 
+	# NOTE: Currently using pipes.quote, in the future we might detect shlex.quote
+	# availability and use it instead. Or not. /me is confused about python 3k
 	def device_escape_path(self, path):
-		s = path
-		
-		replacements = {
-			'(': '\(',
-			')': '\)'
-		}
-
-		for k, v in replacements.iteritems():
-			s = s.replace(k, v)
-
-		return s
+		return pipes.quote( path )
 
 
 	def is_device_file_a_directory(self, device_file):
@@ -146,7 +139,7 @@ class Aafm:
 		pattern = re.compile(r'(\w|_|-)+')
 		base = os.path.basename(directory)
 		if pattern.match(base):
-			self.execute( '%s shell mkdir "%s" ' % (self.adb, directory ) )
+			self.execute( '%s shell mkdir %s' % (self.adb, self.device_escape_path( directory )) )
 		else:
 			print 'invalid directory name', directory
 	
@@ -161,10 +154,10 @@ class Aafm:
 				self.device_delete_item(entry_full_path)
 
 			# finally delete the directory itself
-			self.execute('%s shell rmdir "%s"' % (self.adb, self.device_escape_path(path)))
+			self.execute('%s shell rmdir %s' % (self.adb, self.device_escape_path(path)))
 
 		else:
-			self.execute('%s shell rm "%s"' % (self.adb, self.device_escape_path(path)))
+			self.execute('%s shell rm %s' % (self.adb, self.device_escape_path(path)))
 
 
 	# See  __init__ for _path_join_function definition
@@ -202,47 +195,39 @@ class Aafm:
 				self.copy_to_host(os.path.join(device_file, filename), host_directory)
 		else:
 			host_file = os.path.join(host_directory, os.path.basename(device_file))
-			self.execute('%s pull "%s" "%s"' % (self.adb, device_file, host_file))
+			self.execute('%s pull %s "%s"' % (self.adb, self.device_escape_path( device_file ), host_file))
+
 
 	def copy_to_device(self, host_file, device_directory):
-		fixed_device_dir = os.path.normpath(device_directory)
-		dst_parent_dir = os.path.dirname(fixed_device_dir)
-		# Can't use os.path.basename as it doesn't return the name part of a directory
-		# (it comes out as an empty string!)
-		dst_path, dst_basename = os.path.split(fixed_device_dir)
-		parent_device_entries = self.parse_device_list(self.device_list_files(dst_parent_dir))
 
-		print "PARENT", dst_parent_dir
-		print "BASENAME", dst_basename
-		print "CONTAINS", parent_device_entries
+		if os.path.isfile( host_file ):
 
-		if not parent_device_entries.has_key(dst_basename):
-			self.device_make_directory(device_directory)
-		elif not parent_device_entries[dst_basename]['is_directory']:
-			print "ERROR", device_directory, "is a file, not a directory"
-			return
+			self.execute('%s push "%s" %s' % (self.adb, host_file, self.device_escape_path( device_directory ) ) )
 
-		if os.path.isfile(host_file):
-			print host_file, "is a file"
-
-			# We only copy if the dst file is older or different in size
-			entries = self.parse_device_list(self.device_list_files(device_directory))
-			f = os.path.basename(host_file)
-			if entries.has_key(f):
-				if entries[f]['timestamp'] >= os.path.getmtime(host_file) and entries[f]['size'] == os.path.getsize(host_file):
-					print "File is newer or the same, skipping"
-					return
-
-			print "Copying", host_file, "=>", device_directory
-
-			self.execute('%s push "%s" "%s"' % (self.adb, host_file, self.device_escape_path(device_directory)))
 		else:
-			print host_file, 'is a directory'
 
-			entries = os.listdir(host_file)
+			normalized_directory = os.path.normpath( host_file )
+			dir_basename = os.path.basename( normalized_directory )
+			device_dst_dir = os.path.join( device_directory, dir_basename )
 
-			for entry in entries:
-				self.copy_to_device(os.path.join(host_file, entry), self.device_escape_path(os.path.join(device_directory, os.path.basename(host_file))))
+			# Ensures the directory exists beforehand
+			self.device_make_directory( device_dst_dir )
+
+			device_entries = self.parse_device_list( self.device_list_files( device_dst_dir ) )
+			host_entries = os.listdir( normalized_directory )
+
+			for entry in host_entries:
+
+				src_file = os.path.join( normalized_directory, entry )
+				
+				if device_entries.has_key( entry ):
+					
+					# We only copy if the dst file is older or different in size
+					if device_entries[ entry ]['timestamp'] >= os.path.getmtime( src_file ) or device_entries[ entry ]['size'] == os.path.getsize( src_file ):
+						print "File is newer or the same, skipping"
+						return
+
+					self.copy_to_device( src_file, device_dst_dir )
 
 
 	def device_rename_item(self, device_src_path, device_dst_path):
@@ -254,4 +239,4 @@ class Aafm:
 			print 'Filename %s already exists' % filename
 			return
 
-		self.execute('%s shell mv "%s" "%s"' % (self.adb, self.device_escape_path(device_src_path), self.device_escape_path(device_dst_path)))
+		self.execute('%s shell mv %s %s' % (self.adb, self.device_escape_path(device_src_path), self.device_escape_path(device_dst_path)))
