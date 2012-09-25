@@ -296,7 +296,7 @@ class Aafm_GUI:
 		try:
 			groupname = grp.getgrgid(gid)[0]
 		except KeyError:
-			print 'unknown gid %d for file %s' % (gid, filename)
+			print ('unknown gid %d for file %s' % (gid, filename))
 			groupname = 'unknown'
 		return groupname
 	
