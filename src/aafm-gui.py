@@ -578,10 +578,7 @@ class Aafm_GUI:
 			is_directory = row['is_directory']
 
 			full_device_path = self.aafm.device_path_join(self.device_cwd, filename)
-			if is_directory:
-				full_host_path = os.path.join(self.host_cwd, filename)
-			else:
-				full_host_path = self.host_cwd
+			full_host_path = self.host_cwd
 			
 			self.aafm.copy_to_host(full_device_path, full_host_path)
 			completed = completed + 1
