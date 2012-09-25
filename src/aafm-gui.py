@@ -281,7 +281,11 @@ class Aafm_GUI:
 	def _get_owner(self, filename):
 		st = os.stat(filename)
 		uid = st.st_uid
-		user = pwd.getpwuid(uid)[0]
+		try:
+			user = pwd.getpwuid(uid)[0]
+		except KeyError:
+			print ('unknown uid %d for file %s' % (uid, filename))
+			user = 'unknown'
 		return user
 		
 	def _get_owner_windows(self, filename):
