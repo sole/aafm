@@ -145,9 +145,18 @@ You can also make your changes public even if you don't plan on redistributing t
 
 ## Change log ##
 
+2012 09 25 - **r5**
+
+Several bug fixes and refactoring, plus a nice addition for those using desktop systems in Linux!
+
+* New .desktop file and icon allows users to launch aafm from GNOME/KDE/etc menus/shells/launchers ([Huulivoide](http://github.com/Huulivoide)). Fixes #35.
+* New setup.py script for making aafm available system-wide ([Huulivoide](http://github.com/Huulivoide)). Fixes #35.
+* Fix/refactor copying files between host and device ([sole](http://github.com/sole), [xisberto](http://github.com/xisberto)). Fixes #33 and #37.
+* Gracefully handle unknown uids and gids ([sole](http://github.com/sole) and [muflone](http://github.com/muflone)). Fixes #8 and #39.
+
 2012 03 14 - **r4**
 
-Many interesting bugfixes and new features thanks to the work of Norman Rasmussen and Michał Kowalczuk. Thanks!
+Many interesting bug fixes and new features thanks to the work of Norman Rasmussen and Michał Kowalczuk. Thanks!
 
 * Add BusyBox support (by [sammael](http://github.com/sammael)). Fixes #11.
 * Handle device drops when there's no row present (by [normanr](http://github.com/normanr)). Fixes #9.
