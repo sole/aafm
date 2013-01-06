@@ -234,6 +234,8 @@ class Aafm:
 						return
 
 					self.copy_to_device( src_file, device_dst_dir )
+                                else:
+                                        self.copy_to_device( src_file, device_dst_dir )
 
 
 	def device_rename_item(self, device_src_path, device_dst_path):
