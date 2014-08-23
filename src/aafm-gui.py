@@ -60,6 +60,12 @@ class Aafm_GUI:
 		imageFile = gtk.Image()
 		imageFile.set_from_file(os.path.join(self.basedir, './data/icons/file.png'))
 		
+		# Show hidden files and folders
+		self.showHidden = False
+
+		showHidden = builder.get_object('showHidden')
+		showHidden.connect('toggled', self.on_toggle_hidden)
+
 		# Host and device TreeViews
 		
 		# HOST
@@ -216,6 +222,10 @@ class Aafm_GUI:
 
 		root, dirs, files = next(os.walk(directory))
 
+		if not self.showHidden:
+			files = [f for f in files if not f[0] == '.']
+			dirs = [d for d in dirs if not d[0] == '.']
+
 		dirs.sort()
 		files.sort()
 
@@ -327,6 +337,10 @@ class Aafm_GUI:
 			else:
 				files.append(filename)
 
+		if not self.showHidden:
+			files = [f for f in files if not f[0] == '.']
+			dirs = [d for d in dirs if not d[0] == '.']
+
 		dirs.sort()
 		files.sort()
 
@@ -356,6 +370,13 @@ class Aafm_GUI:
 			})
 
 		return output
+
+
+	def on_toggle_hidden(self, widget):
+		self.showHidden = widget.get_active()
+
+		self.refresh_host_files()
+		self.refresh_device_files()
 
 	def on_host_tree_view_contextual_menu(self, widget, event):
 		if event.button == 3: # Right click
@@ -640,7 +661,7 @@ class Aafm_GUI:
 	def update_progress(self, value = None):
 		if value is None:
 			self.progress_bar.set_fraction(0)
-			self.progress_bar.set_text("")
+			self.progress_bar.set_text("Ready")
 			self.progress_bar.pulse()
 		else:
 			self.progress_bar.set_fraction(value)
