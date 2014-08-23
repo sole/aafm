@@ -238,16 +238,20 @@ class Aafm_GUI:
 
 		for f in files:
 			path = os.path.join(directory, f)
-			size = os.path.getsize(path)
-			output.append({
-				'directory': False,
-				'name': f,
-				'size': size,
-				'timestamp': self.format_timestamp(os.path.getmtime(path)),
-				'permissions': self.get_permissions(path),
-				'owner': self.get_owner(path),
-				'group': self.get_group(path)
-			})
+
+			try:
+				size = os.path.getsize(path)
+				output.append({
+					'directory': False,
+					'name': f,
+					'size': size,
+					'timestamp': self.format_timestamp(os.path.getmtime(path)),
+					'permissions': self.get_permissions(path),
+					'owner': self.get_owner(path),
+					'group': self.get_group(path)
+				})
+			except OSError:
+				pass
 
 		return output
 
