@@ -74,13 +74,30 @@
           </packing>
         </child>
         <child>
-          <object class="GtkProgressBar" id="progressBar">
+          <object class="GtkCheckButton" id="showHidden">
+            <property name="label" translatable="yes">Show _hidden files and folders</property>
             <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="receives_default">False</property>
+            <property name="use_action_appearance">False</property>
+            <property name="draw_indicator">True</property>
+            <property name="use_underline">True</property>
           </object>
           <packing>
             <property name="expand">False</property>
-            <property name="padding">10</property>
+            <property name="padding">4</property>
             <property name="position">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkProgressBar" id="progressBar">
+            <property name="visible">True</property>
+            <property name="text" translatable="yes">Ready</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="padding">0</property>
+            <property name="position">2</property>
           </packing>
         </child>
       </object>
