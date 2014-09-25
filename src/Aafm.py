@@ -45,7 +45,7 @@ class Aafm:
 
 
 	def get_device_file_list(self):
-		return self.parse_device_list( self.device_list_files( self._path_join_function(self.device_cwd, '') ) )
+		return self.device_list_files_parsed(self._path_join_function(self.device_cwd, ''))
 
 	def probe_for_busybox(self):
 		lines = self.adb_shell('ls', '--help')
@@ -53,23 +53,17 @@ class Aafm:
 			print "BusyBox ls detected"
 			self.busybox = True
 
-	def device_list_files(self, device_dir):
+	def device_list_files_parsed(self, device_dir):
 		if self.busybox:
 			command = ['ls', '-l', '-A', '-e', '--color=never', device_dir]
-		else:
-			command = ['ls', '-l', '-a', device_dir]
-		lines = self.adb_shell(*command)
-		return lines
-
-
-	def parse_device_list(self, lines):
-		entries = {}
-
-		if self.busybox:
 			pattern = re.compile(r"^(?P<permissions>[dl\-][rwx\-]+)\s+(?P<hardlinks>\d+)\s+(?P<owner>[\w_]+)\s+(?P<group>[\w_]+)\s+(?P<size>\d+)\s+(?P<datetime>\w{3} \w{3}\s+\d+\s+\d{2}:\d{2}:\d{2} \d{4}) (?P<name>.+)$")
 		else:
+			command = ['ls', '-l', '-a', device_dir]
 			pattern = re.compile(r"^(?P<permissions>[dl\-][rwx\-]+) (?P<owner>\w+)\W+(?P<group>[\w_]+)\W*(?P<size>\d+)?\W+(?P<datetime>\d{4}-\d{2}-\d{2} \d{2}:\d{2}) (?P<name>.+)$")
-		for line in lines:
+
+		entries = {}
+
+		for line in self.adb_shell(*command):
 			line = line.rstrip()
 			match = pattern.match(line)
 			
@@ -112,8 +106,7 @@ class Aafm:
 	def is_device_file_a_directory(self, device_file):
 		parent_dir = os.path.dirname(device_file)
 		filename = os.path.basename(device_file)
-		lines = self.device_list_files(parent_dir)
-		entries = self.parse_device_list(lines)
+		entries = self.device_list_files_parsed(parent_dir)
 
 		if not entries.has_key(filename):
 			return False
@@ -132,7 +125,7 @@ class Aafm:
 	def device_delete_item(self, path):
 
 		if self.is_device_file_a_directory(path):
-			entries = self.parse_device_list(self.device_list_files(path))
+			entries = self.device_list_files_parsed(path)
 
 			for filename, entry in entries.iteritems():
 				entry_full_path = os.path.join(path, filename)
@@ -180,7 +173,7 @@ class Aafm:
 				os.mkdir( final_host_directory )
 
 			# copy recursively!
-			entries = self.parse_device_list(self.device_list_files(device_file))
+			entries = self.device_list_files_parsed(device_file)
 
 			for filename, entry in entries.iteritems():
 				self.copy_to_host(os.path.join(device_file, filename), final_host_directory)
@@ -202,7 +195,7 @@ class Aafm:
 			# Ensures the directory exists beforehand
 			self.device_make_directory( device_dst_dir )
 
-			device_entries = self.parse_device_list( self.device_list_files( device_dst_dir ) )
+			device_entries = self.device_list_files_parsed(device_dst_dir)
 			host_entries = os.listdir( normalized_directory )
 
 			for entry in host_entries:
@@ -222,7 +215,7 @@ class Aafm:
 
 
 	def device_rename_item(self, device_src_path, device_dst_path):
-		items = self.parse_device_list(self.device_list_files(os.path.dirname(device_dst_path)))
+		items = self.device_list_files_parsed(os.path.dirname(device_dst_path))
 		filename = os.path.basename(device_dst_path)
 		print filename
 
