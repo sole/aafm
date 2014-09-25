@@ -104,6 +104,7 @@ class Aafm:
 
 
 	def is_device_file_a_directory(self, device_file):
+		device_file = os.path.normpath(device_file)
 		parent_dir = os.path.dirname(device_file)
 		filename = os.path.basename(device_file)
 		entries = self.device_list_files_parsed(self._path_join_function(parent_dir, ''))
@@ -116,22 +117,46 @@ class Aafm:
 	def device_make_directory(self, directory):
 		if not self.is_device_file_a_directory(directory):
 			self.adb_shell('mkdir', directory)
-	
-	
-	def device_delete_item(self, path):
 
-		if self.is_device_file_a_directory(path):
-			entries = self.device_list_files_parsed(path)
 
+	def device_walk(self, path):
+		assert self.is_device_file_a_directory(path)
+
+		queue = [path]
+		while queue:
+			dirpath = queue.pop(0)
+			dirnames = []
+			filenames = []
+
+			entries = self.device_list_files_parsed(self._path_join_function(dirpath, ''))
 			for filename, entry in entries.iteritems():
-				entry_full_path = os.path.join(path, filename)
-				self.device_delete_item(entry_full_path)
+				if entry['is_directory']:
+					entry_full_path = os.path.join(dirpath, filename)
+					queue.append(entry_full_path)
+					dirnames.append(filename)
+				else:
+					filenames.append(filename)
 
-			# finally delete the directory itself
-			self.adb_shell('rmdir', path)
+			yield (dirpath, dirnames, filenames)
 
-		else:
-			self.adb_shell('rm', path)
+
+	def device_delete_item(self, path):
+		if not self.is_device_file_a_directory(path):
+			yield (self.adb_shell, ('rm', path))
+			return
+
+		# TODO: Maybe we can use "rm -rf" here?
+		dirs_to_remove = [path]
+		for dirpath, dirnames, filenames in self.device_walk(path):
+			for filename in filenames:
+				yield (self.adb_shell, ('rm', os.path.join(dirpath, filename)))
+
+			for dirname in dirnames:
+				dirs_to_remove.append(os.path.join(dirpath, dirname))
+
+		# Remove directory tree from deepest outwards
+		for dirname in reversed(dirs_to_remove):
+			yield (self.adb_shell, ('rmdir', dirname))
 
 
 	# See  __init__ for _path_join_function definition
@@ -147,67 +172,76 @@ class Aafm:
 		return self._path_basename_function(path)
 
 
-	def copy_to_host(self, device_file, host_directory):
+	def make_relative_path(self, old_root, new_root, path):
+		"""
+		>>> make_relative_path('/foo', '/bar', '/foo/123')
+		'/bar/123'
+		>>> make_relative_path('/foo', '/bar/hi', '/foo')
+		'/bar/hi'
+		"""
+		assert not old_root.endswith('/') and not new_root.endswith('/') and path.startswith(old_root)
+		return os.path.normpath(os.path.join(new_root, path[len(old_root)+1:]))
 
-		# We can only copy to a destination path, not to a file
-		# TODO is this really needed?
-		if os.path.isfile(host_directory):
-			print "ERROR", host_directory, "is a file, not a directory"
+
+	def generate_copy_to_host_tasks(self, device_file, host_directory):
+		device_file = os.path.normpath(device_file)
+
+		# If device_file is a file, we simply need to copy it around
+		if not self.is_device_file_a_directory(device_file):
+			yield (self.host_make_directory, (host_directory,))
+			yield (self.copy_file_to_host, (device_file, os.path.join(host_directory, os.path.basename(device_file))))
 			return
 
-		if self.is_device_file_a_directory(device_file):
+		# Otherwise we walk the directory tree and add mkdir/copy commands as needed
+		target_dir = os.path.join(host_directory, os.path.basename(device_file))
+		yield (self.host_make_directory, (target_dir,))
 
-			# make sure host_directory exists before copying anything
-			if not os.path.exists(host_directory):
-				os.makedirs(host_directory)
+		for dirpath, dirnames, filenames in self.device_walk(device_file):
+			host_path = self.make_relative_path(device_file, target_dir, dirpath)
 
-			# Also make directory in host_directory
-			dir_basename = os.path.basename( os.path.normpath( device_file ))
-			final_host_directory = os.path.join( host_directory, dir_basename )
-			
-			if not os.path.exists( final_host_directory ):
-				os.mkdir( final_host_directory )
+			for dirname in dirnames:
+				yield (self.host_make_directory, (os.path.join(host_path, dirname),))
 
-			# copy recursively!
-			entries = self.device_list_files_parsed(device_file)
+			for filename in filenames:
+				yield (self.copy_file_to_host, (os.path.join(dirpath, filename), os.path.join(host_path, filename)))
 
-			for filename, entry in entries.iteritems():
-				self.copy_to_host(os.path.join(device_file, filename), final_host_directory)
-		else:
-			host_file = os.path.join(host_directory, os.path.basename(device_file))
-			self._adb('pull', device_file, host_file)
-	
-	
-	def copy_to_device(self, host_file, device_directory):
 
-		if os.path.isfile( host_file ):
-			self._adb('push', host_file, device_directory)
-		else:
+	def host_make_directory(self, path):
+		if not os.path.exists(path):
+			os.makedirs(path)
 
-			normalized_directory = os.path.normpath( host_file )
-			dir_basename = os.path.basename( normalized_directory )
-			device_dst_dir = os.path.join( device_directory, dir_basename )
 
-			# Ensures the directory exists beforehand
-			self.device_make_directory( device_dst_dir )
+	def copy_file_to_host(self, device_file, host_file):
+		assert os.path.exists(os.path.dirname(host_file))
+		self._adb('pull', device_file, host_file)
 
-			device_entries = self.device_list_files_parsed(device_dst_dir)
-			host_entries = os.listdir( normalized_directory )
 
-			for entry in host_entries:
+	def copy_file_to_device(self, host_file, device_file):
+		assert self.is_device_file_a_directory(os.path.dirname(device_file))
+		# TODO: # We only copy if the dst file is older or different in size
+		#if device_entries[ entry ]['timestamp'] >= os.path.getmtime( src_file ) or device_entries[ entry ]['size'] == os.path.getsize( src_file ):
+		self._adb('push', host_file, device_file)
 
-				src_file = os.path.join( normalized_directory, entry )
-				
-				if device_entries.has_key( entry ):
-					
-					# We only copy if the dst file is older or different in size
-					if device_entries[ entry ]['timestamp'] >= os.path.getmtime( src_file ) or device_entries[ entry ]['size'] == os.path.getsize( src_file ):
-						print "File is newer or the same, skipping"
-						return
 
-					self.copy_to_device( src_file, device_dst_dir )
-                                else:
-                                        self.copy_to_device( src_file, device_dst_dir )
+	def generate_copy_to_device_tasks(self, host_file, device_directory):
+		host_file = os.path.normpath(host_file)
+
+		if os.path.isfile(host_file):
+			yield (self.device_make_directory, (device_directory,))
+			yield (self.copy_file_to_device, (host_file, os.path.join(device_directory, os.path.basename(host_file))))
+			return
+
+		target_dir = os.path.join(device_directory, os.path.basename(host_file))
+		yield (self.device_make_directory, (target_dir,))
+
+		for dirpath, dirnames, filenames in os.walk(host_file):
+			device_path = self.make_relative_path(host_file, target_dir, dirpath)
+
+			for dirname in dirnames:
+				yield (self.device_make_directory, (os.path.join(device_path, dirname),))
+
+			for filename in filenames:
+				yield (self.copy_file_to_device, (os.path.join(dirpath, filename), os.path.join(device_path, filename)))
 
 
 	def device_rename_item(self, device_src_path, device_dst_path):

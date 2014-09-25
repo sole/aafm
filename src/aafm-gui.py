@@ -26,6 +26,7 @@ class Aafm_GUI:
 
 	QUEUE_ACTION_COPY_TO_DEVICE = 'copy_to_device'
 	QUEUE_ACTION_COPY_FROM_DEVICE = 'copy_from_device'
+	QUEUE_ACTION_CALLABLE = 'callable'
 	QUEUE_ACTION_MOVE_IN_DEVICE = 'move_in_device'
 	QUEUE_ACTION_MOVE_IN_HOST = 'move_in_host'
 
@@ -516,8 +517,10 @@ class Aafm_GUI:
 		if result == gtk.RESPONSE_OK:
 			for item in items:
 				full_item_path = self.aafm.device_path_join(self.device_cwd, item)
-				self.aafm.device_delete_item(full_item_path)
-				self.refresh_device_files()
+				for func, args in self.aafm.device_delete_item(full_item_path):
+					self.add_to_queue(self.QUEUE_ACTION_CALLABLE, func, args)
+				self.add_to_queue(self.QUEUE_ACTION_CALLABLE, self.refresh_device_files, ())
+				self.process_queue()
 		else:
 			print('no no')
 
@@ -799,11 +802,15 @@ class Aafm_GUI:
 			action, src, dst = item
 
 			if action == self.QUEUE_ACTION_COPY_TO_DEVICE:
-				self.aafm.copy_to_device(src, dst)
-				self.refresh_device_files()
-			if action == self.QUEUE_ACTION_COPY_FROM_DEVICE:
-				self.aafm.copy_to_host(src, dst)
-				self.refresh_host_files()
+				for func, args in self.aafm.generate_copy_to_device_tasks(src, dst):
+					self.add_to_queue(self.QUEUE_ACTION_CALLABLE, func, args)
+				self.add_to_queue(self.QUEUE_ACTION_CALLABLE, self.refresh_device_files, ())
+			elif action == self.QUEUE_ACTION_COPY_FROM_DEVICE:
+				for func, args in self.aafm.generate_copy_to_host_tasks(src, dst):
+					self.add_to_queue(self.QUEUE_ACTION_CALLABLE, func, args)
+				self.add_to_queue(self.QUEUE_ACTION_CALLABLE, self.refresh_host_files, ())
+			elif action == self.QUEUE_ACTION_CALLABLE:
+				src(*dst)
 			elif action == self.QUEUE_ACTION_MOVE_IN_DEVICE:
 				self.aafm.device_rename_item(src, dst)
 				self.refresh_device_files()
@@ -811,9 +818,8 @@ class Aafm_GUI:
 				shutil.move(src, dst)
 				self.refresh_host_files()
 
-			completed = completed + 1
-			total = len(self.queue) + 1
-			self.update_progress(completed * 1.0 / total)
+			completed += 1
+			self.update_progress(float(completed) / float(completed + len(self.queue)))
 
 			yield True
 
