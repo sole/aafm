@@ -676,6 +676,10 @@ class Aafm_GUI:
 			self.progress_bar.set_text("Done")
 			self.progress_bar.set_fraction(0)
 
+		# Make sure the GUI has some cycles for processing events
+		while gtk.events_pending():
+			gtk.main_iteration(False)
+
 
 	def on_host_drag_data_get(self, widget, context, selection, target_type, time):
 		data = '\n'.join(['file://' + urllib.quote(os.path.join(self.host_cwd, item['filename'])) for item in self.get_host_selected_files()])
