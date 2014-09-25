@@ -29,20 +29,7 @@ class Aafm:
 
 	def execute(self, command):
 		print "EXECUTE=", command
-		process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE).stdout
-
-		lines = []
-
-		while True:
-			line = process.readline()
-			
-			if not line:
-				break
-
-			lines.append(line)
-		
-		return lines
-
+		return subprocess.Popen(command, shell=True, stdout=subprocess.PIPE).stdout.readlines()
 
 	def set_host_cwd(self, cwd):
 		self.host_cwd = cwd
