@@ -2,7 +2,6 @@ import os
 import re
 import subprocess
 import time
-import pipes
 
 class Aafm:
 	def __init__(self, adb='adb', host_cwd=None, device_cwd='/'):
@@ -27,9 +26,15 @@ class Aafm:
 		self.probe_for_busybox()
 		
 
-	def execute(self, command):
-		print "EXECUTE=", command
-		return subprocess.Popen(command, shell=True, stdout=subprocess.PIPE).stdout.readlines()
+	def execute(self, *args):
+		print "EXECUTE", args
+		return subprocess.Popen(args, stdout=subprocess.PIPE).stdout.readlines()
+
+	def _adb(self, *args):
+		return self.execute(self.adb, *args)
+
+	def adb_shell(self, *args):
+		return self._adb('shell', *args)
 
 	def set_host_cwd(self, cwd):
 		self.host_cwd = cwd
@@ -43,18 +48,17 @@ class Aafm:
 		return self.parse_device_list( self.device_list_files( self._path_join_function(self.device_cwd, '') ) )
 
 	def probe_for_busybox(self):
-		command = '%s shell ls --help' % (self.adb)
-		lines = self.execute(command)
+		lines = self.adb_shell('ls', '--help')
 		if len(lines) > 0 and lines[0].startswith('BusyBox'):
 			print "BusyBox ls detected"
 			self.busybox = True
 
 	def device_list_files(self, device_dir):
 		if self.busybox:
-			command = '%s shell ls -l -A -e --color=never %s' % (self.adb, self.device_escape_path( device_dir))
+			command = ['ls', '-l', '-A', '-e', '--color=never', device_dir]
 		else:
-			command = '%s shell ls -l -a %s' % (self.adb, self.device_escape_path(device_dir))
-		lines = self.execute(command)
+			command = ['ls', '-l', '-a', device_dir]
+		lines = self.adb_shell(*command)
 		return lines
 
 
@@ -105,12 +109,6 @@ class Aafm:
 		return entries
 
 
-	# NOTE: Currently using pipes.quote, in the future we might detect shlex.quote
-	# availability and use it instead. Or not. /me is confused about python 3k
-	def device_escape_path(self, path):
-		return pipes.quote( path )
-
-
 	def is_device_file_a_directory(self, device_file):
 		parent_dir = os.path.dirname(device_file)
 		filename = os.path.basename(device_file)
@@ -126,7 +124,7 @@ class Aafm:
 		pattern = re.compile(r'(\w|_|-)+')
 		base = os.path.basename(directory)
 		if pattern.match(base):
-			self.execute( '%s shell mkdir %s' % (self.adb, self.device_escape_path( directory )) )
+			self.adb_shell('mkdir', directory)
 		else:
 			print 'invalid directory name', directory
 	
@@ -141,10 +139,10 @@ class Aafm:
 				self.device_delete_item(entry_full_path)
 
 			# finally delete the directory itself
-			self.execute('%s shell rmdir %s' % (self.adb, self.device_escape_path(path)))
+			self.adb_shell('rmdir', path)
 
 		else:
-			self.execute('%s shell rm %s' % (self.adb, self.device_escape_path(path)))
+			self.adb_shell('rm', path)
 
 
 	# See  __init__ for _path_join_function definition
@@ -188,15 +186,13 @@ class Aafm:
 				self.copy_to_host(os.path.join(device_file, filename), final_host_directory)
 		else:
 			host_file = os.path.join(host_directory, os.path.basename(device_file))
-			self.execute('%s pull %s "%s"' % (self.adb, self.device_escape_path( device_file ), host_file))
+			self._adb('pull', device_file, host_file)
 	
 	
 	def copy_to_device(self, host_file, device_directory):
 
 		if os.path.isfile( host_file ):
-
-			self.execute('%s push "%s" %s' % (self.adb, host_file, self.device_escape_path( device_directory ) ) )
-
+			self._adb('push', host_file, device_directory)
 		else:
 
 			normalized_directory = os.path.normpath( host_file )
@@ -226,7 +222,7 @@ class Aafm:
 
 
 	def device_rename_item(self, device_src_path, device_dst_path):
-		items = self.parse_device_list(self.device_list_files(self.device_escape_path(os.path.dirname(device_dst_path))))
+		items = self.parse_device_list(self.device_list_files(os.path.dirname(device_dst_path)))
 		filename = os.path.basename(device_dst_path)
 		print filename
 
@@ -234,4 +230,4 @@ class Aafm:
 			print 'Filename %s already exists' % filename
 			return
 
-		self.execute('%s shell mv %s %s' % (self.adb, self.device_escape_path(device_src_path), self.device_escape_path(device_dst_path)))
+		self.adb_shell('mv', device_src_path, device_dst_path)
