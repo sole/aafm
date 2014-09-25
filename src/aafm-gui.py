@@ -150,9 +150,8 @@ class Aafm_GUI:
 
 		# Make both panels equal in size (at least initially)
 		panelsPaned = builder.get_object('panelsPaned')
-		panelW, panelH = panelsPaned.size_request()
-		halfW = panelW / 2
-		panelsPaned.set_position(halfW)
+		self.window.show_all()
+		panelsPaned.set_position(panelsPaned.get_allocation().width / 2)
 
 		# And we're done!
 		self.window.show_all()
