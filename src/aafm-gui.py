@@ -795,7 +795,7 @@ class Aafm_GUI:
 		self.update_progress()
 
 		while len(self.queue) > 0:
-			item = self.queue.pop()
+			item = self.queue.pop(0)
 			action, src, dst = item
 
 			if action == self.QUEUE_ACTION_COPY_TO_DEVICE:
