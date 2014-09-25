@@ -106,7 +106,7 @@ class Aafm:
 	def is_device_file_a_directory(self, device_file):
 		parent_dir = os.path.dirname(device_file)
 		filename = os.path.basename(device_file)
-		entries = self.device_list_files_parsed(parent_dir)
+		entries = self.device_list_files_parsed(self._path_join_function(parent_dir, ''))
 
 		if not entries.has_key(filename):
 			return False
