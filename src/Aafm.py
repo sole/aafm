@@ -114,12 +114,8 @@ class Aafm:
 		return entries[filename]['is_directory']
 
 	def device_make_directory(self, directory):
-		pattern = re.compile(r'(\w|_|-)+')
-		base = os.path.basename(directory)
-		if pattern.match(base):
+		if not self.is_device_file_a_directory(directory):
 			self.adb_shell('mkdir', directory)
-		else:
-			print 'invalid directory name', directory
 	
 	
 	def device_delete_item(self, path):
