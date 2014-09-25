@@ -599,25 +599,15 @@ class Aafm_GUI:
 
 
 	def copy_from_device_task(self, rows):
-		completed = 0
-		total = len(rows)
-
-		self.update_progress()
-
 		for row in rows:
 			filename = row['filename']
-			is_directory = row['is_directory']
 
 			full_device_path = self.aafm.device_path_join(self.device_cwd, filename)
 			full_host_path = self.host_cwd
-			
-			self.aafm.copy_to_host(full_device_path, full_host_path)
-			completed = completed + 1
-			self.refresh_host_files()
-			self.update_progress(completed * 1.0 / total)
 
-			yield True
+			self.add_to_queue(self.QUEUE_ACTION_COPY_FROM_DEVICE, full_device_path, full_host_path)
 
+		self.process_queue()
 		yield False
 
 	def on_device_rename_item_callback(self, widget):
