@@ -67,6 +67,13 @@ class Aafm_GUI:
 		showHidden = builder.get_object('showHidden')
 		showHidden.connect('toggled', self.on_toggle_hidden)
 
+		# Refresh view
+		refreshView = builder.get_object('refreshView')
+		refreshView.connect('activate', self.refresh_all)
+
+		itemQuit = builder.get_object('itemQuit')
+		itemQuit.connect('activate', gtk.main_quit)
+
 		# Host and device TreeViews
 		
 		# HOST
@@ -145,8 +152,7 @@ class Aafm_GUI:
 		self.host_cwd = os.getcwd()
 		self.device_cwd = '/mnt/sdcard/'
 
-		self.refresh_host_files()
-		self.refresh_device_files()
+		self.refresh_all()
 
 		# Make both panels equal in size (at least initially)
 		panelsPaned = builder.get_object('panelsPaned')
@@ -184,6 +190,9 @@ class Aafm_GUI:
 			self.aafm.set_device_cwd(self.device_cwd)
 			self.refresh_device_files()
 
+	def refresh_all(self, widget=None):
+		self.refresh_host_files()
+		self.refresh_device_files()
 	
 	def refresh_host_files(self):
 		self.host_treeViewFile.load_data(self.dir_scan_host(self.host_cwd))
@@ -379,8 +388,7 @@ class Aafm_GUI:
 	def on_toggle_hidden(self, widget):
 		self.showHidden = widget.get_active()
 
-		self.refresh_host_files()
-		self.refresh_device_files()
+		self.refresh_all()
 
 	def on_host_tree_view_contextual_menu(self, widget, event):
 		if event.button == 3: # Right click
