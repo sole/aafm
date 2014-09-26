@@ -165,7 +165,7 @@ class Aafm_GUI:
 		# And we're done!
 		self.window.show_all()
 
-	def refresh_menu_devices(self):
+	def refresh_menu_devices(self, widget=None):
 		self.aafm.refresh_devices()
 		selected = self.aafm.get_device_serial()
 
@@ -179,9 +179,7 @@ class Aafm_GUI:
 		menu = self.menuDevices
 		submenu = gtk.Menu()
 		group = None
-		print 'getting subitems'
 		for serial, name in self.aafm.get_devices():
-			print 'serial:', serial, 'name:', name
 			item = gtk.RadioMenuItem(group, '%s (%s)' % (name, serial))
 			if serial == selected:
 				item.set_active(True)
@@ -190,7 +188,12 @@ class Aafm_GUI:
 			if group is None:
 				group = item
 			submenu.append(item)
+		submenu.append(gtk.SeparatorMenuItem())
+		item = gtk.MenuItem('Refresh device list')
+		item.connect('activate', self.refresh_menu_devices)
+		submenu.append(item)
 		menu.set_submenu(submenu)
+		menu.show_all()
 
 
 
