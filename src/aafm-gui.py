@@ -166,15 +166,18 @@ class Aafm_GUI:
 		self.window.show_all()
 
 	def refresh_menu_devices(self, widget=None):
+		before = self.aafm.get_device_serial()
 		self.aafm.refresh_devices()
 		selected = self.aafm.get_device_serial()
+		if before != selected:
+			self.aafm.set_device_cwd('/mnt/sdcard/')
+			self.refresh_device_files()
 
 		def on_menu_item_toggled(item, serial):
 			if item.get_active():
-				print 'selecting item:', serial
 				self.aafm.set_device_serial(serial)
 				self.aafm.set_device_cwd('/mnt/sdcard/')
-				self.refresh_all()
+				self.refresh_device_files()
 
 		menu = self.menuDevices
 		submenu = gtk.Menu()
@@ -187,6 +190,10 @@ class Aafm_GUI:
 			item.connect('toggled', on_menu_item_toggled, serial)
 			if group is None:
 				group = item
+			submenu.append(item)
+		if group is None:
+			item = gtk.MenuItem('No devices found')
+			item.set_sensitive(False)
 			submenu.append(item)
 		submenu.append(gtk.SeparatorMenuItem())
 		item = gtk.MenuItem('Refresh device list')
