@@ -42,6 +42,14 @@
               </object>
             </child>
             <child>
+              <object class="GtkMenuItem" id="menuDevices">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="label" translatable="yes">Devices</property>
+                <property name="use_underline">True</property>
+              </object>
+            </child>
+            <child>
               <object class="GtkMenuItem" id="menuitem3">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>

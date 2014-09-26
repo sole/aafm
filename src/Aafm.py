@@ -4,10 +4,13 @@ import subprocess
 import time
 
 class Aafm:
-	def __init__(self, adb='adb', host_cwd=None, device_cwd='/'):
+	def __init__(self, adb='adb', host_cwd=None, device_cwd='/', device_serial=None):
 		self.adb = adb
 		self.host_cwd = host_cwd
 		self.device_cwd = device_cwd
+		self.device_serial = device_serial
+		self.busybox = False
+		self.connected_devices = []
 		
 		# The Android device should always use POSIX path style separators (/),
 		# so we can happily use os.path.join when running on Linux (which is POSIX)
@@ -21,16 +24,18 @@ class Aafm:
 		self._path_join_function = pathmodule.join
 		self._path_normpath_function = pathmodule.normpath
 		self._path_basename_function = pathmodule.basename
-		
-		self.busybox = False
-		self.probe_for_busybox()
-		
+
+		self.refresh_devices()
 
 	def execute(self, *args):
 		print "EXECUTE", args
-		return subprocess.Popen(args, stdout=subprocess.PIPE).stdout.readlines()
+		proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+		return filter(None, [line.rstrip('\r\n') for line in proc.stdout])
 
 	def _adb(self, *args):
+		if self.device_serial is not None:
+			return self.execute(self.adb, '-s', self.device_serial, *args)
+
 		return self.execute(self.adb, *args)
 
 	def adb_shell(self, *args):
@@ -43,15 +48,55 @@ class Aafm:
 	def set_device_cwd(self, cwd):
 		self.device_cwd = cwd
 
+	def set_device_serial(self, serial):
+		self.device_serial = serial
+		self.probe_for_busybox()
+
+	def get_device_serial(self):
+		return self.device_serial
+
+	def get_devices(self):
+		return self.connected_devices
+
+	def refresh_devices(self):
+		self.connected_devices = list(self.get_connected_devices())
+		if self.device_serial not in [serial for serial, name in self.connected_devices]:
+			# Previously-selected device has gone, need to select a new one
+			if self.connected_devices:
+				self.set_device_serial(self.connected_devices[0][0])
+			else:
+				self.set_device_serial(None)
+
+
+	def get_connected_devices(self):
+		serials = [line.split(None, 1)
+				for line in self.execute(self.adb, 'devices')
+				if line and not line.startswith('List of devices attached')]
+
+		for serial, kind in serials:
+			build_prop = self.execute(self.adb, '-s', serial,
+					'shell', 'cat', '/system/build.prop')
+			props = dict(x.strip().split('=', 1) for x in build_prop if '=' in x)
+			yield (serial, props.get('ro.product.model', serial))
 
 	def get_device_file_list(self):
 		return self.device_list_files_parsed(self._path_join_function(self.device_cwd, ''))
 
+	def get_free_space(self):
+		lines = self.adb_shell('df', self.device_cwd)
+		if len(lines) != 2 or not lines[0].startswith('Filesystem'):
+			return '-'
+
+		splitted = lines[1].split()
+		if len(splitted) != 5:
+			return '-'
+
+		mountpoint, size, used, free, blksize = splitted
+		return free
+
 	def probe_for_busybox(self):
-		lines = self.adb_shell('ls', '--help')
-		if len(lines) > 0 and lines[0].startswith('BusyBox'):
-			print "BusyBox ls detected"
-			self.busybox = True
+		self.busybox = any(line.startswith('BusyBox')
+				for line in self.adb_shell('ls', '--help'))
 
 	def device_list_files_parsed(self, device_dir):
 		if self.busybox:

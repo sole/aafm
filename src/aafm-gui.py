@@ -74,6 +74,9 @@ class Aafm_GUI:
 		itemQuit = builder.get_object('itemQuit')
 		itemQuit.connect('activate', gtk.main_quit)
 
+		self.menuDevices = builder.get_object('menuDevices')
+		self.refresh_menu_devices()
+
 		# Host and device TreeViews
 		
 		# HOST
@@ -150,7 +153,7 @@ class Aafm_GUI:
 		self.window.set_title("Android ADB file manager")
 		#self.adb = 'adb'
 		self.host_cwd = os.getcwd()
-		self.device_cwd = '/mnt/sdcard/'
+		self.aafm.set_device_cwd('/mnt/sdcard/')
 
 		self.refresh_all()
 
@@ -161,6 +164,34 @@ class Aafm_GUI:
 
 		# And we're done!
 		self.window.show_all()
+
+	def refresh_menu_devices(self):
+		self.aafm.refresh_devices()
+		selected = self.aafm.get_device_serial()
+
+		def on_menu_item_toggled(item, serial):
+			if item.get_active():
+				print 'selecting item:', serial
+				self.aafm.set_device_serial(serial)
+				self.aafm.set_device_cwd('/mnt/sdcard/')
+				self.refresh_all()
+
+		menu = self.menuDevices
+		submenu = gtk.Menu()
+		group = None
+		print 'getting subitems'
+		for serial, name in self.aafm.get_devices():
+			print 'serial:', serial, 'name:', name
+			item = gtk.RadioMenuItem(group, '%s (%s)' % (name, serial))
+			if serial == selected:
+				item.set_active(True)
+
+			item.connect('toggled', on_menu_item_toggled, serial)
+			if group is None:
+				group = item
+			submenu.append(item)
+		menu.set_submenu(submenu)
+
 
 
 	def host_navigate_callback(self, widget, path, view_column):
@@ -186,8 +217,7 @@ class Aafm_GUI:
 		name = model.get_value(iter, 1)
 
 		if is_dir:
-			self.device_cwd = self.aafm.device_path_normpath(self.aafm.device_path_join(self.device_cwd, name))
-			self.aafm.set_device_cwd(self.device_cwd)
+			self.aafm.set_device_cwd(self.aafm.device_path_normpath(self.aafm.device_path_join(self.aafm.device_cwd, name)))
 			self.refresh_device_files()
 
 	def refresh_all(self, widget=None):
@@ -200,8 +230,8 @@ class Aafm_GUI:
 
 
 	def refresh_device_files(self):
-		self.device_treeViewFile.load_data(self.dir_scan_device(self.device_cwd))
-		self.deviceFrame.set_label('%s:%s' % ('device', self.device_cwd))
+		self.device_treeViewFile.load_data(self.dir_scan_device(self.aafm.device_cwd))
+		self.deviceFrame.set_label('%s:%s (%s free)' % ('device', self.aafm.device_cwd, self.aafm.get_free_space()))
 
 
 	def get_treeviewfile_selected(self, treeviewfile):
@@ -426,7 +456,7 @@ class Aafm_GUI:
 	def on_host_copy_to_device_callback(self, widget):
 		for row in self.get_host_selected_files():
 			src = os.path.join(self.host_cwd, row['filename'])
-			self.add_to_queue(self.QUEUE_ACTION_COPY_TO_DEVICE, src, self.device_cwd)
+			self.add_to_queue(self.QUEUE_ACTION_COPY_TO_DEVICE, src, self.aafm.device_cwd)
 		self.process_queue()
 
 	
@@ -523,7 +553,7 @@ class Aafm_GUI:
 
 		if result == gtk.RESPONSE_OK:
 			for item in items:
-				full_item_path = self.aafm.device_path_join(self.device_cwd, item)
+				full_item_path = self.aafm.device_path_join(self.aafm.device_cwd, item)
 				for func, args in self.aafm.device_delete_item(full_item_path):
 					self.add_to_queue(self.QUEUE_ACTION_CALLABLE, func, args)
 				self.add_to_queue(self.QUEUE_ACTION_CALLABLE, self.refresh_device_files, ())
@@ -556,7 +586,7 @@ class Aafm_GUI:
 		if directory_name is None:
 			return
 
-		full_path = self.aafm.device_path_join(self.device_cwd, directory_name)
+		full_path = self.aafm.device_path_join(self.aafm.device_cwd, directory_name)
 		self.aafm.device_make_directory(full_path)
 		self.refresh_device_files()
 
@@ -610,7 +640,7 @@ class Aafm_GUI:
 		for row in rows:
 			filename = row['filename']
 
-			full_device_path = self.aafm.device_path_join(self.device_cwd, filename)
+			full_device_path = self.aafm.device_path_join(self.aafm.device_cwd, filename)
 			full_host_path = self.host_cwd
 
 			self.add_to_queue(self.QUEUE_ACTION_COPY_FROM_DEVICE, full_device_path, full_host_path)
@@ -625,8 +655,8 @@ class Aafm_GUI:
 		if new_name is None:
 			return
 
-		full_src_path = self.aafm.device_path_join(self.device_cwd, old_name)
-		full_dst_path = self.aafm.device_path_join(self.device_cwd, new_name)
+		full_src_path = self.aafm.device_path_join(self.aafm.device_cwd, old_name)
+		full_dst_path = self.aafm.device_path_join(self.aafm.device_cwd, new_name)
 
 		self.aafm.device_rename_item(full_src_path, full_dst_path)
 		self.refresh_device_files()
@@ -732,7 +762,7 @@ class Aafm_GUI:
 			if destination_file.startswith('file://'):
 				destination = os.path.dirname(urllib.unquote(destination_file).replace('file://', '', 1))
 				for item in self.get_device_selected_files():
-					self.add_to_queue(self.QUEUE_ACTION_COPY_FROM_DEVICE, self.aafm.device_path_join(self.device_cwd, item['filename']), destination)
+					self.add_to_queue(self.QUEUE_ACTION_COPY_FROM_DEVICE, self.aafm.device_path_join(self.aafm.device_cwd, item['filename']), destination)
 
 				self.process_queue()
 			else:
@@ -740,7 +770,7 @@ class Aafm_GUI:
 
 
 		else:
-			selection.set(selection.target, 8, '\n'.join(['file://' + urllib.quote(self.aafm.device_path_join(self.device_cwd, item['filename'])) for item in self.get_device_selected_files()]))
+			selection.set(selection.target, 8, '\n'.join(['file://' + urllib.quote(self.aafm.device_path_join(self.aafm.device_cwd, item['filename'])) for item in self.get_device_selected_files()]))
 	
 
 	def on_device_drag_data_received(self, tree_view, context, x, y, selection, info, timestamp):
@@ -748,7 +778,7 @@ class Aafm_GUI:
 		data = selection.data
 		type = selection.type
 		drop_info = tree_view.get_dest_row_at_pos(x, y)
-		destination = self.device_cwd
+		destination = self.aafm.device_cwd
 		
 		# When dropped over a row
 		if drop_info:
@@ -762,10 +792,10 @@ class Aafm_GUI:
 
 				# If dropping over a folder, copy things to that folder
 				if is_directory:
-					destination = self.aafm.device_path_join(self.device_cwd, name)
+					destination = self.aafm.device_path_join(self.aafm.device_cwd, name)
 
 		if type == 'DRAG_SELF':
-			if self.device_cwd != destination:
+			if self.aafm.device_cwd != destination:
 				for line in [line.strip() for line in data.split('\n')]:
 					if line.startswith('file://'):
 						source = urllib.unquote(line.replace('file://', '', 1))
