@@ -2,13 +2,15 @@ import os
 import re
 import subprocess
 import time
-import pipes
 
 class Aafm:
-	def __init__(self, adb='adb', host_cwd=None, device_cwd='/'):
+	def __init__(self, adb='adb', host_cwd=None, device_cwd='/', device_serial=None):
 		self.adb = adb
 		self.host_cwd = host_cwd
 		self.device_cwd = device_cwd
+		self.device_serial = device_serial
+		self.busybox = False
+		self.connected_devices = []
 		
 		# The Android device should always use POSIX path style separators (/),
 		# so we can happily use os.path.join when running on Linux (which is POSIX)
@@ -22,27 +24,22 @@ class Aafm:
 		self._path_join_function = pathmodule.join
 		self._path_normpath_function = pathmodule.normpath
 		self._path_basename_function = pathmodule.basename
-		
-		self.busybox = False
-		self.probe_for_busybox()
-		
 
-	def execute(self, command):
-		print "EXECUTE=", command
-		process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE).stdout
+		self.refresh_devices()
 
-		lines = []
+	def execute(self, *args):
+		print "EXECUTE", args
+		proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+		return filter(None, [line.rstrip('\r\n') for line in proc.stdout])
 
-		while True:
-			line = process.readline()
-			
-			if not line:
-				break
+	def _adb(self, *args):
+		if self.device_serial is not None:
+			return self.execute(self.adb, '-s', self.device_serial, *args)
 
-			lines.append(line)
-		
-		return lines
+		return self.execute(self.adb, *args)
 
+	def adb_shell(self, *args):
+		return self._adb('shell', *args)
 
 	def set_host_cwd(self, cwd):
 		self.host_cwd = cwd
@@ -51,34 +48,67 @@ class Aafm:
 	def set_device_cwd(self, cwd):
 		self.device_cwd = cwd
 
+	def set_device_serial(self, serial):
+		self.device_serial = serial
+		self.probe_for_busybox()
+
+	def get_device_serial(self):
+		return self.device_serial
+
+	def get_devices(self):
+		return self.connected_devices
+
+	def refresh_devices(self):
+		self.connected_devices = list(self.get_connected_devices())
+		if self.device_serial not in [serial for serial, name in self.connected_devices]:
+			# Previously-selected device has gone, need to select a new one
+			if self.connected_devices:
+				self.set_device_serial(self.connected_devices[0][0])
+			else:
+				self.set_device_serial(None)
+
+
+	def get_connected_devices(self):
+		serials = [line.split(None, 1)
+				for line in self.execute(self.adb, 'devices')
+				if line and not line.startswith('List of devices attached')]
+
+		for serial, kind in serials:
+			build_prop = self.execute(self.adb, '-s', serial,
+					'shell', 'cat', '/system/build.prop')
+			props = dict(x.strip().split('=', 1) for x in build_prop if '=' in x)
+			yield (serial, props.get('ro.product.model', serial))
 
 	def get_device_file_list(self):
-		return self.parse_device_list( self.device_list_files( self._path_join_function(self.device_cwd, '') ) )
+		return self.device_list_files_parsed(self._path_join_function(self.device_cwd, ''))
+
+	def get_free_space(self):
+		lines = self.adb_shell('df', self.device_cwd)
+		if len(lines) != 2 or not lines[0].startswith('Filesystem'):
+			return '-'
+
+		splitted = lines[1].split()
+		if len(splitted) != 5:
+			return '-'
+
+		mountpoint, size, used, free, blksize = splitted
+		return free
 
 	def probe_for_busybox(self):
-		command = '%s shell ls --help' % (self.adb)
-		lines = self.execute(command)
-		if len(lines) > 0 and lines[0].startswith('BusyBox'):
-			print "BusyBox ls detected"
-			self.busybox = True
+		self.busybox = any(line.startswith('BusyBox')
+				for line in self.adb_shell('ls', '--help'))
 
-	def device_list_files(self, device_dir):
+	def device_list_files_parsed(self, device_dir):
 		if self.busybox:
-			command = '%s shell ls -l -A -e --color=never %s' % (self.adb, self.device_escape_path( device_dir))
-		else:
-			command = '%s shell ls -l -a %s' % (self.adb, self.device_escape_path(device_dir))
-		lines = self.execute(command)
-		return lines
-
-
-	def parse_device_list(self, lines):
-		entries = {}
-
-		if self.busybox:
+			command = ['ls', '-l', '-A', '-e', '--color=never', device_dir]
 			pattern = re.compile(r"^(?P<permissions>[dl\-][rwx\-]+)\s+(?P<hardlinks>\d+)\s+(?P<owner>[\w_]+)\s+(?P<group>[\w_]+)\s+(?P<size>\d+)\s+(?P<datetime>\w{3} \w{3}\s+\d+\s+\d{2}:\d{2}:\d{2} \d{4}) (?P<name>.+)$")
 		else:
+			command = ['ls', '-l', '-a', device_dir]
 			pattern = re.compile(r"^(?P<permissions>[dl\-][rwx\-]+) (?P<owner>\w+)\W+(?P<group>[\w_]+)\W*(?P<size>\d+)?\W+(?P<datetime>\d{4}-\d{2}-\d{2} \d{2}:\d{2}) (?P<name>.+)$")
-		for line in lines:
+
+		entries = {}
+
+		for line in self.adb_shell(*command):
 			line = line.rstrip()
 			match = pattern.match(line)
 			
@@ -118,17 +148,11 @@ class Aafm:
 		return entries
 
 
-	# NOTE: Currently using pipes.quote, in the future we might detect shlex.quote
-	# availability and use it instead. Or not. /me is confused about python 3k
-	def device_escape_path(self, path):
-		return pipes.quote( path )
-
-
 	def is_device_file_a_directory(self, device_file):
+		device_file = os.path.normpath(device_file)
 		parent_dir = os.path.dirname(device_file)
 		filename = os.path.basename(device_file)
-		lines = self.device_list_files(parent_dir)
-		entries = self.parse_device_list(lines)
+		entries = self.device_list_files_parsed(self._path_join_function(parent_dir, ''))
 
 		if not entries.has_key(filename):
 			return False
@@ -136,28 +160,48 @@ class Aafm:
 		return entries[filename]['is_directory']
 
 	def device_make_directory(self, directory):
-		pattern = re.compile(r'(\w|_|-)+')
-		base = os.path.basename(directory)
-		if pattern.match(base):
-			self.execute( '%s shell mkdir %s' % (self.adb, self.device_escape_path( directory )) )
-		else:
-			print 'invalid directory name', directory
-	
-	
-	def device_delete_item(self, path):
+		if not self.is_device_file_a_directory(directory):
+			self.adb_shell('mkdir', directory)
 
-		if self.is_device_file_a_directory(path):
-			entries = self.parse_device_list(self.device_list_files(path))
 
+	def device_walk(self, path):
+		assert self.is_device_file_a_directory(path)
+
+		queue = [path]
+		while queue:
+			dirpath = queue.pop(0)
+			dirnames = []
+			filenames = []
+
+			entries = self.device_list_files_parsed(self._path_join_function(dirpath, ''))
 			for filename, entry in entries.iteritems():
-				entry_full_path = os.path.join(path, filename)
-				self.device_delete_item(entry_full_path)
+				if entry['is_directory']:
+					entry_full_path = os.path.join(dirpath, filename)
+					queue.append(entry_full_path)
+					dirnames.append(filename)
+				else:
+					filenames.append(filename)
 
-			# finally delete the directory itself
-			self.execute('%s shell rmdir %s' % (self.adb, self.device_escape_path(path)))
+			yield (dirpath, dirnames, filenames)
 
-		else:
-			self.execute('%s shell rm %s' % (self.adb, self.device_escape_path(path)))
+
+	def device_delete_item(self, path):
+		if not self.is_device_file_a_directory(path):
+			yield (self.adb_shell, ('rm', path))
+			return
+
+		# TODO: Maybe we can use "rm -rf" here?
+		dirs_to_remove = [path]
+		for dirpath, dirnames, filenames in self.device_walk(path):
+			for filename in filenames:
+				yield (self.adb_shell, ('rm', os.path.join(dirpath, filename)))
+
+			for dirname in dirnames:
+				dirs_to_remove.append(os.path.join(dirpath, dirname))
+
+		# Remove directory tree from deepest outwards
+		for dirname in reversed(dirs_to_remove):
+			yield (self.adb_shell, ('rmdir', dirname))
 
 
 	# See  __init__ for _path_join_function definition
@@ -173,73 +217,80 @@ class Aafm:
 		return self._path_basename_function(path)
 
 
-	def copy_to_host(self, device_file, host_directory):
+	def make_relative_path(self, old_root, new_root, path):
+		"""
+		>>> make_relative_path('/foo', '/bar', '/foo/123')
+		'/bar/123'
+		>>> make_relative_path('/foo', '/bar/hi', '/foo')
+		'/bar/hi'
+		"""
+		assert not old_root.endswith('/') and not new_root.endswith('/') and path.startswith(old_root)
+		return os.path.normpath(os.path.join(new_root, path[len(old_root)+1:]))
 
-		# We can only copy to a destination path, not to a file
-		# TODO is this really needed?
-		if os.path.isfile(host_directory):
-			print "ERROR", host_directory, "is a file, not a directory"
+
+	def generate_copy_to_host_tasks(self, device_file, host_directory):
+		device_file = os.path.normpath(device_file)
+
+		# If device_file is a file, we simply need to copy it around
+		if not self.is_device_file_a_directory(device_file):
+			yield (self.host_make_directory, (host_directory,))
+			yield (self.copy_file_to_host, (device_file, os.path.join(host_directory, os.path.basename(device_file))))
 			return
 
-		if self.is_device_file_a_directory(device_file):
+		# Otherwise we walk the directory tree and add mkdir/copy commands as needed
+		target_dir = os.path.join(host_directory, os.path.basename(device_file))
+		yield (self.host_make_directory, (target_dir,))
 
-			# make sure host_directory exists before copying anything
-			if not os.path.exists(host_directory):
-				os.makedirs(host_directory)
+		for dirpath, dirnames, filenames in self.device_walk(device_file):
+			host_path = self.make_relative_path(device_file, target_dir, dirpath)
 
-			# Also make directory in host_directory
-			dir_basename = os.path.basename( os.path.normpath( device_file ))
-			final_host_directory = os.path.join( host_directory, dir_basename )
-			
-			if not os.path.exists( final_host_directory ):
-				os.mkdir( final_host_directory )
+			for dirname in dirnames:
+				yield (self.host_make_directory, (os.path.join(host_path, dirname),))
 
-			# copy recursively!
-			entries = self.parse_device_list(self.device_list_files(device_file))
+			for filename in filenames:
+				yield (self.copy_file_to_host, (os.path.join(dirpath, filename), os.path.join(host_path, filename)))
 
-			for filename, entry in entries.iteritems():
-				self.copy_to_host(os.path.join(device_file, filename), final_host_directory)
-		else:
-			host_file = os.path.join(host_directory, os.path.basename(device_file))
-			self.execute('%s pull %s "%s"' % (self.adb, self.device_escape_path( device_file ), host_file))
-	
-	
-	def copy_to_device(self, host_file, device_directory):
 
-		if os.path.isfile( host_file ):
+	def host_make_directory(self, path):
+		if not os.path.exists(path):
+			os.makedirs(path)
 
-			self.execute('%s push "%s" %s' % (self.adb, host_file, self.device_escape_path( device_directory ) ) )
 
-		else:
+	def copy_file_to_host(self, device_file, host_file):
+		assert os.path.exists(os.path.dirname(host_file))
+		self._adb('pull', device_file, host_file)
 
-			normalized_directory = os.path.normpath( host_file )
-			dir_basename = os.path.basename( normalized_directory )
-			device_dst_dir = os.path.join( device_directory, dir_basename )
 
-			# Ensures the directory exists beforehand
-			self.device_make_directory( device_dst_dir )
+	def copy_file_to_device(self, host_file, device_file):
+		assert self.is_device_file_a_directory(os.path.dirname(device_file))
+		# TODO: # We only copy if the dst file is older or different in size
+		#if device_entries[ entry ]['timestamp'] >= os.path.getmtime( src_file ) or device_entries[ entry ]['size'] == os.path.getsize( src_file ):
+		self._adb('push', host_file, device_file)
 
-			device_entries = self.parse_device_list( self.device_list_files( device_dst_dir ) )
-			host_entries = os.listdir( normalized_directory )
 
-			for entry in host_entries:
+	def generate_copy_to_device_tasks(self, host_file, device_directory):
+		host_file = os.path.normpath(host_file)
 
-				src_file = os.path.join( normalized_directory, entry )
-				
-				if device_entries.has_key( entry ):
-					
-					# We only copy if the dst file is older or different in size
-					if device_entries[ entry ]['timestamp'] >= os.path.getmtime( src_file ) or device_entries[ entry ]['size'] == os.path.getsize( src_file ):
-						print "File is newer or the same, skipping"
-						return
+		if os.path.isfile(host_file):
+			yield (self.device_make_directory, (device_directory,))
+			yield (self.copy_file_to_device, (host_file, os.path.join(device_directory, os.path.basename(host_file))))
+			return
 
-					self.copy_to_device( src_file, device_dst_dir )
-                                else:
-                                        self.copy_to_device( src_file, device_dst_dir )
+		target_dir = os.path.join(device_directory, os.path.basename(host_file))
+		yield (self.device_make_directory, (target_dir,))
+
+		for dirpath, dirnames, filenames in os.walk(host_file):
+			device_path = self.make_relative_path(host_file, target_dir, dirpath)
+
+			for dirname in dirnames:
+				yield (self.device_make_directory, (os.path.join(device_path, dirname),))
+
+			for filename in filenames:
+				yield (self.copy_file_to_device, (os.path.join(dirpath, filename), os.path.join(device_path, filename)))
 
 
 	def device_rename_item(self, device_src_path, device_dst_path):
-		items = self.parse_device_list(self.device_list_files(self.device_escape_path(os.path.dirname(device_dst_path))))
+		items = self.device_list_files_parsed(os.path.dirname(device_dst_path))
 		filename = os.path.basename(device_dst_path)
 		print filename
 
@@ -247,4 +298,4 @@ class Aafm:
 			print 'Filename %s already exists' % filename
 			return
 
-		self.execute('%s shell mv %s %s' % (self.adb, self.device_escape_path(device_src_path), self.device_escape_path(device_dst_path)))
+		self.adb_shell('mv', device_src_path, device_dst_path)
